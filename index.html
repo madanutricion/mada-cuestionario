@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuestionario semanal · MADA Nutrición</title>
+<style>
+  /* Sistema tipográfico MADA (mismo que los documentos imprimibles, en oscuro):
+     kicker letterspaced → título bold 700 caja alta → secundario gris.
+     Filete grueso como estructura. El verde solo para acción y datos.
+     Página estática independiente: NO usa Apps Script HtmlService (evita el bug
+     de multi-cuenta de script.google.com). Envía las respuestas por POST al
+     doPost del Apps Script, que escribe en la misma hoja de siempre. */
+  :root {
+    --bg: #0A0E0C;
+    --surface: #121A15;
+    --surface-2: #18231C;
+    --border: #223328;
+    --ink: #ECF6EF;
+    --accent: #00FF41;
+    --accent-dim: #00C853;
+    --accent-soft: rgba(0,255,65,0.10);
+    --text: #ECF6EF;
+    --text-2: #9BB0A3;
+    --text-3: #5C6E63;
+    --danger: #FF5252;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Avenir Next", -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 18px 120px; }
+
+  /* ── Cabecera: kicker · saludo (primario) · semana (secundario) · filete ── */
+  .brand { font-size: 11px; font-weight: 700; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
+  .greeting { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; margin-top: 6px; }
+  .week-meta { font-size: 13px; font-weight: 500; color: var(--text-2); margin-top: 3px; }
+  .head-rule { border-bottom: 3px solid var(--ink); padding-bottom: 16px; margin-bottom: 18px; }
+
+  /* ── Progreso ── */
+  .progress-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .step-label { font-size: 11px; font-weight: 700; color: var(--text-3); letter-spacing: 2px; text-transform: uppercase; }
+  .step-count { font-size: 11px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .progress-track { height: 4px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-bottom: 26px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.4s cubic-bezier(0.22,1,0.36,1); }
+
+  /* ── Pasos ── */
+  .step { display: none; animation: stepIn 0.35s cubic-bezier(0.22,1,0.36,1); }
+  .step.active { display: block; }
+  @keyframes stepIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+
+  .step-icon { font-size: 26px; margin-bottom: 8px; }
+  .step-title { font-size: 18px; font-weight: 700; letter-spacing: -0.2px; text-transform: uppercase; margin-bottom: 4px; }
+  .step-desc { font-size: 13.5px; font-weight: 500; color: var(--text-2); line-height: 1.5; margin-bottom: 20px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 16px; margin-bottom: 12px;
+  }
+
+  /* ── Campos: etiqueta primaria · pista secundaria gris ── */
+  .field-label { display: block; font-size: 14.5px; font-weight: 600; margin-bottom: 10px; }
+  .field-hint { font-size: 12px; font-weight: 500; color: var(--text-3); margin-top: -6px; margin-bottom: 10px; }
+  .optional { color: var(--text-3); font-weight: 500; font-size: 11.5px; }
+
+  input[type="text"], input[type="number"], textarea {
+    width: 100%; background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 16px; font-weight: 500; padding: 13px 14px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+  ::placeholder { color: var(--text-3); font-weight: 500; }
+
+  /* ── Peso semanal: día primario en caja alta · fecha secundaria gris ── */
+  .weight-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .weight-row:first-child { border-top: 0; padding-top: 2px; }
+  .weight-day { width: 96px; flex-shrink: 0; }
+  .weight-day .d { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .weight-day .f { font-size: 11px; font-weight: 500; color: var(--text-3); margin-top: 1px; }
+  .weight-row input { text-align: center; padding: 11px 10px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .weight-row .kg { font-size: 12px; font-weight: 500; color: var(--text-3); width: 22px; }
+
+  /* ── Slider: valor primario 700 · extremos secundarios ── */
+  .slider-block { padding: 4px 0 10px; }
+  .slider-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
+  .slider-value {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.3px; color: var(--accent);
+    font-variant-numeric: tabular-nums; min-width: 54px; text-align: right;
+  }
+  .slider-value.unset { color: var(--text-3); font-size: 13px; font-weight: 500; letter-spacing: 0; }
+  .slider-emoji { font-size: 19px; margin-right: 6px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 34px;
+    background: transparent; margin-top: 2px;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 8px; border-radius: 999px;
+    background: var(--track, var(--surface-2));
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--accent);
+    margin-top: -9px; box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+  }
+  input[type="range"]::-moz-range-track { height: 8px; border-radius: 999px; background: var(--track, var(--surface-2)); }
+  input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); }
+  .slider-ends { display: flex; justify-content: space-between; font-size: 11px; font-weight: 500; color: var(--text-3); margin-top: -2px; }
+
+  /* ── Navegación ── */
+  .nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, var(--bg) 65%, transparent);
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+  .nav-inner { max-width: 480px; margin: 0 auto; display: flex; gap: 10px; }
+  .btn {
+    flex: 1; border: none; border-radius: 12px; font-size: 16px; font-weight: 700;
+    padding: 16px; cursor: pointer; font-family: inherit;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-next { background: var(--accent); color: #04140A; }
+  .btn-next:disabled { opacity: 0.55; }
+  .btn-back { background: var(--surface-2); color: var(--text-2); flex: 0 0 92px; }
+
+  /* ── Éxito ── */
+  .success { text-align: center; padding: 70px 10px 30px; display: none; }
+  .success.active { display: block; animation: stepIn 0.4s cubic-bezier(0.22,1,0.36,1); }
+  .check-ring {
+    width: 92px; height: 92px; margin: 0 auto 26px; border-radius: 50%;
+    background: var(--accent-soft); display: flex; align-items: center; justify-content: center;
+    animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .check-ring svg { width: 46px; height: 46px; stroke: var(--accent); stroke-width: 3; fill: none;
+    stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 0.6s 0.25s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .success h2 { font-size: 23px; font-weight: 700; letter-spacing: -0.3px; text-transform: uppercase; margin-bottom: 10px; }
+  .success p { font-size: 14px; font-weight: 500; color: var(--text-2); line-height: 1.6; max-width: 300px; margin: 0 auto; }
+
+  .error-banner {
+    display: none; background: rgba(255,82,82,0.1); border: 1px solid rgba(255,82,82,0.35);
+    color: var(--danger); font-size: 13.5px; font-weight: 500; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .invalid-link { text-align: center; padding: 90px 20px; }
+  .invalid-link .step-icon { font-size: 40px; }
+
+  .spinner {
+    display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid rgba(4,20,10,0.3); border-top-color: #04140A;
+    animation: spin 0.7s linear infinite; vertical-align: -4px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Enlace sin token (se muestra por JS si falta ?t=) -->
+  <div id="invalid" style="display:none">
+    <div class="brand">MADA Nutrición</div>
+    <div class="invalid-link">
+      <div class="step-icon">🔗</div>
+      <div class="step-title">Enlace no válido</div>
+      <p class="step-desc" style="margin-top:8px;">Este enlace está incompleto.<br>Pide a tu nutricionista que te lo reenvíe.</p>
+    </div>
+  </div>
+
+  <!-- Cuestionario (se muestra por JS si hay token) -->
+  <div id="app" style="display:none">
+    <div id="form-area">
+      <div class="head-rule">
+        <div class="brand">MADA Nutrición · Seguimiento semanal</div>
+        <div class="greeting" id="greeting">Hola 👋</div>
+        <div class="week-meta" id="week-label"></div>
+      </div>
+
+      <div class="progress-row">
+        <span class="step-label" id="step-name"></span>
+        <span class="step-count" id="step-count"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress" style="width:20%"></div></div>
+
+      <div class="error-banner" id="error-banner"></div>
+
+      <!-- PASO 1 · Peso -->
+      <section class="step active" data-name="Peso">
+        <div class="step-icon">⚖️</div>
+        <div class="step-title">Tu peso esta semana</div>
+        <div class="step-desc">Apunta los días que te hayas pesado (en ayunas). Los que no tengas, déjalos en blanco.</div>
+        <div class="card" id="weight-card"></div>
+      </section>
+
+      <!-- PASO 2 · Descanso y energía -->
+      <section class="step" data-name="Descanso y energía">
+        <div class="step-icon">😴</div>
+        <div class="step-title">Descanso y energía</div>
+        <div class="step-desc">¿Cómo te has sentido en general durante la semana?</div>
+
+        <div class="card slider-block" data-slider="cansancio_0_10" data-emojis="⚡,😊,😐,🥱,😵" data-min-label="Con energía" data-max-label="Agotado/a"></div>
+        <div class="card">
+          <label class="field-label">¿A qué crees que se debe? <span class="optional">· opcional</span></label>
+          <input type="text" id="causa_cansancio" placeholder="Trabajo, poco sueño, entrenos…">
+        </div>
+        <div class="card slider-block" data-slider="calidad_sueno_0_10" data-emojis="😫,😕,😐,🙂,😴" data-min-label="Muy mala" data-max-label="Excelente" data-title="Calidad del sueño"></div>
+        <div class="card">
+          <label class="field-label">Horas de sueño <span class="optional">· media por noche</span></label>
+          <input type="number" id="horas_sueno" inputmode="decimal" step="0.5" min="0" max="16" placeholder="7.5">
+        </div>
+        <div class="card slider-block" data-slider="animo_0_10" data-emojis="😞,😕,😐,🙂,😄" data-min-label="Muy bajo" data-max-label="Genial" data-title="Estado de ánimo"></div>
+        <div class="card">
+          <label class="field-label">Notas sobre el descanso <span class="optional">· opcional</span></label>
+          <input type="text" id="notas_sueno" placeholder="Me despierto por la noche, madrugones…">
+        </div>
+      </section>
+
+      <!-- PASO 3 · Alimentación -->
+      <section class="step" data-name="Alimentación">
+        <div class="step-icon">🍽️</div>
+        <div class="step-title">Alimentación y digestión</div>
+        <div class="step-desc">Sobre cómo te ha sentado el plan esta semana.</div>
+
+        <div class="card slider-block" data-slider="saciedad_0_10" data-emojis="😣,😕,😐,🙂,😌" data-min-label="Paso hambre" data-max-label="Muy saciado/a" data-title="Saciedad"></div>
+        <div class="card">
+          <label class="field-label">¿Hambre a alguna hora concreta? <span class="optional">· opcional</span></label>
+          <input type="text" id="hambre_notas" placeholder="Media tarde, antes de cenar…">
+        </div>
+        <div class="card slider-block" data-slider="digestiones_0_10" data-emojis="🤢,😕,😐,🙂,✨" data-min-label="Muy malas" data-max-label="Perfectas" data-title="Digestiones"></div>
+        <div class="card">
+          <label class="field-label">¿Molestias digestivas? <span class="optional">· opcional</span></label>
+          <input type="text" id="molestias_digestivas" placeholder="Hinchazón, acidez, gases…">
+        </div>
+        <div class="card slider-block" data-slider="hidratacion_0_10" data-emojis="🏜️,😕,😐,🙂,💧" data-min-label="Muy poca agua" data-max-label="Muy bien" data-title="Hidratación"></div>
+      </section>
+
+      <!-- PASO 4 · Tu plan -->
+      <section class="step" data-name="Tu plan">
+        <div class="step-icon">📋</div>
+        <div class="step-title">Tu menú semanal</div>
+        <div class="step-desc">Esto nos ayuda a ajustar los platos de las próximas semanas.</div>
+
+        <div class="card">
+          <label class="field-label">¿Contento/a con el menú?</label>
+          <input type="text" id="satisfaccion_menu" placeholder="Sí, aunque repetiría menos las cenas…">
+        </div>
+        <div class="card slider-block" data-slider="aburrimiento_0_10" data-emojis="🤩,🙂,😐,🥱,😪" data-min-label="Para nada" data-max-label="Mucho" data-title="¿Te aburre el menú?"></div>
+        <div class="card">
+          <label class="field-label">¿Dificultades para seguir el plan? <span class="optional">· opcional</span></label>
+          <textarea id="dificultades_plan" placeholder="Comidas fuera, falta de tiempo para cocinar…"></textarea>
+        </div>
+        <div class="card">
+          <label class="field-label">¿Cambiarías algún plato? <span class="optional">· opcional</span></label>
+          <input type="text" id="cambios_platos" placeholder="El salmón del martes por otro pescado…">
+        </div>
+        <div class="card">
+          <label class="field-label">¿Platos favoritos de la semana? <span class="optional">· opcional</span></label>
+          <input type="text" id="platos_favoritos" placeholder="El curry de garbanzos 😍">
+        </div>
+      </section>
+
+      <!-- PASO 5 · Actividad -->
+      <section class="step" data-name="Actividad">
+        <div class="step-icon">🏃</div>
+        <div class="step-title">Actividad y último apunte</div>
+        <div class="step-desc">Ya casi está. Un par de datos más y terminamos.</div>
+
+        <div class="card">
+          <label class="field-label">Pasos diarios <span class="optional">· media, según tu reloj o móvil</span></label>
+          <input type="number" id="pasos_diarios" inputmode="numeric" min="0" max="80000" step="100" placeholder="10000">
+        </div>
+        <div class="card">
+          <label class="field-label">¿Ejercicio fuera de lo programado? <span class="optional">· opcional</span></label>
+          <input type="text" id="ejercicio_extra" placeholder="Ruta el sábado, pádel el jueves…">
+        </div>
+        <div class="card">
+          <label class="field-label">¿Algo más que quieras contarme? <span class="optional">· opcional</span></label>
+          <textarea id="comentarios" placeholder="Dudas, sensaciones, lo que sea…"></textarea>
+        </div>
+      </section>
+    </div>
+
+    <!-- Éxito -->
+    <div class="success" id="success">
+      <div class="check-ring">
+        <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>
+      </div>
+      <h2 id="success-title">¡Enviado!</h2>
+      <p>Tus respuestas ya están con tu nutricionista.<br>¡Sigue así! 💪</p>
+    </div>
+
+    <div class="nav" id="nav">
+      <div class="nav-inner">
+        <button type="button" class="btn btn-back" id="btn-back" style="visibility:hidden">Atrás</button>
+        <button type="button" class="btn btn-next" id="btn-next">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Endpoint de guardado: doPost del Apps Script (misma hoja de respuestas) ──
+  // Si algún día vuelves a desplegar el Apps Script con URL nueva, actualiza SOLO
+  // esta constante (y repega el doPost). El resto no cambia.
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzBSPjT4OMWfERGcvEaLBzYpcZ7_TzcPt_0wFx6_oYWbFCrjNvzpEvgvw21qtx3n33XWg/exec';
+
+  // ── Parámetros del enlace: ?t=token&w=lunes&n=nombre ──
+  var Q = new URLSearchParams(location.search);
+  var TOKEN = (Q.get('t') || '').trim();
+  var CLIENT_NAME = (Q.get('n') || '').trim();
+
+  function mondayOf(d) { var day = (d.getDay() + 6) % 7; var m = new Date(d); m.setDate(d.getDate() - day); m.setHours(12,0,0,0); return m; }
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  var WEEK_START = (Q.get('w') || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(WEEK_START)) WEEK_START = ymd(mondayOf(new Date()));
+
+  // ── Sin token → pantalla de enlace no válido ──
+  if (!TOKEN) {
+    document.getElementById('invalid').style.display = 'block';
+  } else {
+    document.getElementById('app').style.display = 'block';
+    initForm();
+  }
+
+  function initForm() {
+  var DRAFT_KEY = 'mada_q_' + TOKEN + '_' + WEEK_START;
+
+  var SLIDER_TITLES = { cansancio_0_10: 'Nivel de cansancio' };
+  var DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  var DAY_KEYS = ['peso_lunes','peso_martes','peso_miercoles','peso_jueves','peso_viernes','peso_sabado','peso_domingo'];
+  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  // ── Saludo + semana ──
+  if (CLIENT_NAME) document.getElementById('greeting').textContent = 'Hola, ' + CLIENT_NAME + ' 👋';
+  var ws = new Date(WEEK_START + 'T12:00:00');
+  var we = new Date(ws); we.setDate(ws.getDate() + 6);
+  document.getElementById('week-label').textContent =
+    'Semana del ' + ws.getDate() + ' de ' + MESES[ws.getMonth()] +
+    ' al ' + we.getDate() + ' de ' + MESES[we.getMonth()];
+
+  // ── Inputs de peso con fecha real ──
+  var wc = document.getElementById('weight-card');
+  DAYS.forEach(function (d, i) {
+    var dt = new Date(ws); dt.setDate(ws.getDate() + i);
+    var row = document.createElement('div');
+    row.className = 'weight-row';
+    row.innerHTML =
+      '<div class="weight-day"><div class="d">' + d + '</div>' +
+      '<div class="f">' + dt.getDate() + ' ' + MESES[dt.getMonth()] + '</div></div>' +
+      '<input type="number" inputmode="decimal" step="0.05" min="30" max="250" ' +
+      'id="' + DAY_KEYS[i] + '" placeholder="—">' +
+      '<span class="kg">kg</span>';
+    wc.appendChild(row);
+  });
+
+  // ── Sliders 0-10 (empiezan sin valor; primer toque fija) ──
+  document.querySelectorAll('[data-slider]').forEach(function (block) {
+    var id = block.dataset.slider;
+    var title = block.dataset.title || SLIDER_TITLES[id] || id;
+    var emojis = block.dataset.emojis.split(',');
+    block.innerHTML =
+      '<div class="slider-head"><label class="field-label" style="margin-bottom:0">' + title +
+      '</label><span class="slider-value unset" id="' + id + '-val">toca para valorar</span></div>' +
+      '<input type="range" min="0" max="10" step="1" value="5" id="' + id + '" data-set="0">' +
+      '<div class="slider-ends"><span>' + block.dataset.minLabel + '</span><span>' +
+      block.dataset.maxLabel + '</span></div>';
+    var input = block.querySelector('input');
+    var val = block.querySelector('.slider-value');
+    function paint() {
+      var v = +input.value;
+      var pct = v * 10;
+      input.style.setProperty('--track',
+        'linear-gradient(90deg, var(--accent-dim) 0%, var(--accent) ' + pct + '%, var(--surface-2) ' + pct + '%)');
+      var emoji = emojis[Math.min(emojis.length - 1, Math.floor(v / (10.01 / emojis.length)))];
+      val.innerHTML = '<span class="slider-emoji">' + emoji + '</span>' + v;
+      val.classList.remove('unset');
+    }
+    input.addEventListener('input', function () { input.dataset.set = '1'; paint(); saveDraft(); });
+    input.paintIfSet = function () { if (input.dataset.set === '1') paint(); };
+  });
+
+  // ── Wizard ──
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var current = 0;
+  var btnNext = document.getElementById('btn-next');
+  var btnBack = document.getElementById('btn-back');
+
+  function show(i) {
+    steps.forEach(function (s, j) { s.classList.toggle('active', i === j); });
+    current = i;
+    document.getElementById('progress').style.width = ((i + 1) / steps.length * 100) + '%';
+    document.getElementById('step-name').textContent = steps[i].dataset.name;
+    document.getElementById('step-count').textContent = 'Paso ' + (i + 1) + ' de ' + steps.length;
+    btnBack.style.visibility = i === 0 ? 'hidden' : 'visible';
+    btnNext.textContent = i === steps.length - 1 ? 'Enviar ✓' : 'Continuar';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  btnBack.addEventListener('click', function () { if (current > 0) show(current - 1); });
+  btnNext.addEventListener('click', function () {
+    if (current < steps.length - 1) { show(current + 1); saveDraft(); }
+    else submit();
+  });
+
+  // ── Borrador en localStorage ──
+  var FIELD_IDS = DAY_KEYS.concat(
+    ['cansancio_0_10','animo_0_10','calidad_sueno_0_10','hidratacion_0_10',
+     'saciedad_0_10','digestiones_0_10','aburrimiento_0_10',
+     'horas_sueno','pasos_diarios','causa_cansancio','notas_sueno','hambre_notas',
+     'dificultades_plan','molestias_digestivas','satisfaccion_menu','cambios_platos',
+     'platos_favoritos','ejercicio_extra','comentarios']);
+
+  function saveDraft() {
+    try {
+      var d = {};
+      FIELD_IDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (el.type === 'range') { if (el.dataset.set === '1') d[id] = el.value; }
+        else if (el.value !== '') d[id] = el.value;
+      });
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch (e) {}
+  }
+  function loadDraft() {
+    try {
+      var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+      Object.keys(d).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.value = d[id];
+        if (el.type === 'range') { el.dataset.set = '1'; el.paintIfSet(); }
+      });
+    } catch (e) {}
+  }
+  document.addEventListener('input', function (e) {
+    if (e.target.matches('input,textarea')) saveDraft();
+  });
+  loadDraft();
+  show(0);
+
+  // ── Envío ──
+  function collect() {
+    var data = { token: TOKEN, week_start: WEEK_START };
+    FIELD_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.type === 'range') {
+        if (el.dataset.set === '1') data[id] = +el.value;
+      } else if (el.type === 'number') {
+        if (el.value !== '') data[id] = +el.value.replace(',', '.');
+      } else if (el.value.trim() !== '') {
+        data[id] = el.value.trim();
+      }
+    });
+    return data;
+  }
+
+  function submit() {
+    var banner = document.getElementById('error-banner');
+    banner.style.display = 'none';
+    btnNext.disabled = true;
+    btnNext.innerHTML = '<span class="spinner"></span>Enviando…';
+    // POST en segundo plano al doPost del Apps Script. Usamos 'no-cors' +
+    // credentials 'omit': la petición NO lleva la sesión de Google del cliente,
+    // así que Apps Script la ejecuta como el dueño (nada de bug multi-cuenta).
+    // La respuesta es opaca (no legible), pero el doPost escribe igualmente.
+    fetch(EXEC_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      credentials: 'omit',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(collect())
+    })
+      .then(function () {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        document.getElementById('form-area').style.display = 'none';
+        document.getElementById('nav').style.display = 'none';
+        if (CLIENT_NAME) document.getElementById('success-title').textContent = '¡Listo, ' + CLIENT_NAME + '!';
+        document.getElementById('success').classList.add('active');
+        window.scrollTo(0, 0);
+      })
+      .catch(function (err) {
+        btnNext.disabled = false;
+        btnNext.textContent = 'Reintentar envío';
+        banner.textContent = 'No se pudo enviar (' + ((err && err.message) || 'sin conexión') +
+          '). Tus respuestas siguen guardadas en este dispositivo: prueba otra vez.';
+        banner.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+  }
+  }
+</script>
+</body>
+</html>
