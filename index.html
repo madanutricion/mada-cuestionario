@@ -6,28 +6,29 @@
 <title>Cuestionario semanal · MADA Nutrición</title>
 <style>
   /* ───────────────────────────────────────────────────────────────────────────
-     MADA · Cuestionario semanal — estética Apple sobre marca MADA.
-     Sistema: fuente del sistema (SF), grises oscuros de iOS por capas, verde
-     MADA como acento (con moderación), hairlines en vez de filetes gruesos,
-     tarjetas "inset grouped", materiales translúcidos y movimiento tipo muelle.
-     La lógica (IDs, clases, EXEC_URL, JS) es idéntica a la versión anterior.
+     MADA · Cuestionario semanal — estética Apple Health (tema claro).
+     Fondo gris agrupado de iOS, tarjetas blancas con sombra suave, fuente del
+     sistema (SF), verde del sistema como acento, hairlines, materiales
+     translúcidos y movimiento tipo muelle. Lógica idéntica (IDs, clases,
+     EXEC_URL, JS) a la versión anterior.
      ─────────────────────────────────────────────────────────────────────────── */
   :root {
-    color-scheme: dark;
-    --bg: #000000;
-    --card: #1C1C1E;          /* iOS systemGray6 dark — superficie de tarjeta */
-    --card-2: #2C2C2E;        /* campos / filas elevadas */
-    --field: #2C2C2E;
-    --hairline: rgba(255,255,255,0.08);
-    --label: #FFFFFF;
-    --label-2: rgba(235,235,245,0.60);
-    --label-3: rgba(235,235,245,0.30);
-    --accent: #00FF41;        /* verde MADA */
-    --accent-dim: #00CF37;    /* arranque del relleno del slider */
-    --accent-soft: rgba(0,255,65,0.14);
-    --accent-ink: #00220B;    /* texto sobre botón verde */
-    --surface-2: #39393D;     /* pista sin rellenar del slider (usada por JS) */
-    --danger: #FF453A;        /* rojo sistema iOS */
+    color-scheme: light;
+    --bg: #F2F2F7;            /* systemGroupedBackground light */
+    --card: #FFFFFF;
+    --card-2: #FFFFFF;
+    --field: #EFEFF4;         /* campo dentro de tarjeta blanca */
+    --hairline: rgba(60,60,67,0.13);
+    --label: #1C1C1E;
+    --label-2: rgba(60,60,67,0.60);   /* secondaryLabel light */
+    --label-3: rgba(60,60,67,0.32);   /* tertiaryLabel light */
+    --accent: #34C759;        /* verde del sistema (Health) */
+    --accent-dim: #30B94F;    /* arranque del relleno del slider */
+    --accent-strong: #248A3D; /* verde legible para números/valores sobre blanco */
+    --accent-soft: rgba(52,199,89,0.16);
+    --accent-ink: #FFFFFF;    /* texto sobre botón verde */
+    --surface-2: #E4E4EA;     /* pista sin rellenar del slider (usada por JS) */
+    --danger: #D70015;        /* rojo sistema iOS light */
     --text: var(--label);
     --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -63,7 +64,7 @@
   .progress-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
   .step-label { font-size: 12px; font-weight: 600; color: var(--label-2); letter-spacing: 0.2px; }
   .step-count { font-size: 12px; font-weight: 400; color: var(--label-3); font-variant-numeric: tabular-nums; }
-  .progress-track { height: 4px; background: rgba(255,255,255,0.09); border-radius: 999px; overflow: hidden; margin-bottom: 30px; }
+  .progress-track { height: 4px; background: rgba(120,120,128,0.20); border-radius: 999px; overflow: hidden; margin-bottom: 30px; }
   .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.55s var(--ease-spring); }
 
   /* ── Pasos (transición tipo muelle) ── */
@@ -80,7 +81,7 @@
     border-radius: 18px;
     padding: 18px 16px;
     margin-bottom: 14px;
-    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.04);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
   }
 
   /* ── Campos ── */
@@ -95,7 +96,7 @@
     transition: box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
     font-family: inherit; letter-spacing: -0.01em;
   }
-  input:focus, textarea:focus { background: #34343A; box-shadow: 0 0 0 3.5px var(--accent-soft); }
+  input:focus, textarea:focus { background: #FFFFFF; box-shadow: 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px rgba(60,60,67,0.10); }
   textarea { resize: vertical; min-height: 88px; line-height: 1.5; }
   ::placeholder { color: var(--label-3); font-weight: 400; }
 
@@ -112,7 +113,7 @@
   .slider-block { padding: 4px 0 8px; }
   .slider-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
   .slider-value {
-    font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent);
+    font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent-strong);
     font-variant-numeric: tabular-nums; min-width: 54px; text-align: right;
   }
   .slider-value.unset { color: var(--label-3); font-size: 14px; font-weight: 400; letter-spacing: -0.01em; }
@@ -127,22 +128,22 @@
   }
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none; width: 27px; height: 27px; border-radius: 50%;
-    background: #fff; border: none;
-    margin-top: -11px; box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.35);
+    background: #fff; border: 0.5px solid rgba(0,0,0,0.04);
+    margin-top: -11px; box-shadow: 0 1px 3px rgba(0,0,0,0.22), 0 4px 10px rgba(0,0,0,0.10);
     transition: transform 0.12s var(--ease-out);
   }
   input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
   input[type="range"]::-moz-range-track { height: 5px; border-radius: 999px; background: var(--track, var(--surface-2)); }
-  input[type="range"]::-moz-range-thumb { width: 25px; height: 25px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,0.5); }
+  input[type="range"]::-moz-range-thumb { width: 25px; height: 25px; border-radius: 50%; background: #fff; border: 0.5px solid rgba(0,0,0,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.22); }
   .slider-ends { display: flex; justify-content: space-between; font-size: 12px; font-weight: 400; color: var(--label-3); margin-top: 2px; letter-spacing: -0.01em; }
 
-  /* ── Navegación: barra de material translúcido ── */
+  /* ── Navegación: barra de material translúcido claro ── */
   .nav {
     position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(18,18,20,0.72);
+    background: rgba(255,255,255,0.72);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     backdrop-filter: blur(24px) saturate(180%);
-    border-top: 0.5px solid rgba(255,255,255,0.10);
+    border-top: 0.5px solid rgba(0,0,0,0.10);
     padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
   }
   .nav-inner { max-width: 500px; margin: 0 auto; display: flex; gap: 10px; }
@@ -152,10 +153,10 @@
     transition: transform 0.13s var(--ease-out), opacity 0.2s var(--ease-out), background 0.2s var(--ease-out);
   }
   .btn:active { transform: scale(0.96); }
-  .btn-next { background: var(--accent); color: var(--accent-ink); }
-  .btn-next:disabled { opacity: 0.5; }
-  .btn-back { background: rgba(255,255,255,0.09); color: var(--label); flex: 0 0 96px; }
-  .btn-back:active { background: rgba(255,255,255,0.14); }
+  .btn-next { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(52,199,89,0.35); }
+  .btn-next:disabled { opacity: 0.5; box-shadow: none; }
+  .btn-back { background: rgba(118,118,128,0.12); color: var(--label); flex: 0 0 96px; }
+  .btn-back:active { background: rgba(118,118,128,0.20); }
 
   /* ── Éxito ── */
   .success { text-align: center; padding: 76px 10px 30px; display: none; }
@@ -174,8 +175,8 @@
   .success p { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.55; max-width: 300px; margin: 0 auto; letter-spacing: -0.01em; }
 
   .error-banner {
-    display: none; background: rgba(255,69,58,0.14); border: 0.5px solid rgba(255,69,58,0.4);
-    color: #FF6961; font-size: 14px; font-weight: 400; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px;
+    display: none; background: rgba(255,59,48,0.10); border: 0.5px solid rgba(255,59,48,0.35);
+    color: var(--danger); font-size: 14px; font-weight: 400; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px;
     line-height: 1.45; letter-spacing: -0.01em;
   }
 
@@ -184,7 +185,7 @@
 
   .spinner {
     display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-    border: 2.5px solid rgba(0,34,11,0.3); border-top-color: var(--accent-ink);
+    border: 2.5px solid rgba(255,255,255,0.45); border-top-color: #fff;
     animation: spin 0.7s linear infinite; vertical-align: -4px; margin-right: 8px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -199,7 +200,7 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   }
   @media (prefers-reduced-transparency: reduce) {
-    .nav { background: #131315; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .nav { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
 </style>
 </head>
