@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuestionario inicial · MADA Nutrición</title>
+<style>
+  /* MADA · Cuestionario inicial — mismo sistema Apple Health (claro) que el semanal.
+     Página estática (GitHub Pages) → POST al doPost del Apps Script (form:'intake')
+     → pestaña INICIAL de la hoja → la app crea el cliente tras tu revisión. */
+  :root {
+    color-scheme: light;
+    --bg: #F2F2F7; --card: #FFFFFF; --field: #EFEFF4;
+    --hairline: rgba(60,60,67,0.13);
+    --label: #1C1C1E; --label-2: rgba(60,60,67,0.60); --label-3: rgba(60,60,67,0.32);
+    --accent: #34C759; --accent-strong: #248A3D; --accent-soft: rgba(52,199,89,0.16); --accent-ink: #FFFFFF;
+    --danger: #D70015;
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body {
+    background: var(--bg); color: var(--label);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto; min-height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  .wrap { max-width: 500px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 30px) 20px 140px; }
+
+  .brand { font-size: 12px; font-weight: 600; letter-spacing: 0.4px; color: var(--label-3); text-transform: uppercase; }
+  .greeting { font-size: 30px; font-weight: 700; letter-spacing: -0.021em; line-height: 1.08; margin-top: 8px; }
+  .week-meta { font-size: 15px; font-weight: 400; color: var(--label-2); margin-top: 5px; letter-spacing: -0.01em; }
+  .head-rule { border-bottom: 0.5px solid var(--hairline); padding-bottom: 22px; margin-bottom: 24px; }
+
+  .progress-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
+  .step-label { font-size: 12px; font-weight: 600; color: var(--label-2); letter-spacing: 0.2px; }
+  .step-count { font-size: 12px; font-weight: 400; color: var(--label-3); font-variant-numeric: tabular-nums; }
+  .progress-track { height: 4px; background: rgba(120,120,128,0.20); border-radius: 999px; overflow: hidden; margin-bottom: 30px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.55s var(--ease-spring); }
+
+  .step { display: none; }
+  .step.active { display: block; animation: stepIn 0.5s var(--ease-spring); }
+  @keyframes stepIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  .step-icon { font-size: 30px; margin-bottom: 12px; line-height: 1; }
+  .step-title { font-size: 22px; font-weight: 700; letter-spacing: -0.019em; margin-bottom: 6px; }
+  .step-desc { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.45; letter-spacing: -0.01em; margin-bottom: 24px; }
+
+  .card { background: var(--card); border-radius: 18px; padding: 18px 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03); }
+  .field-label { display: block; font-size: 16px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 12px; }
+  .field-label .req { color: var(--accent-strong); }
+  .optional { color: var(--label-3); font-weight: 400; font-size: 13px; }
+
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea {
+    width: 100%; background: var(--field); border: none; border-radius: 12px; color: var(--label);
+    font-size: 16px; font-weight: 400; padding: 14px 15px; outline: none;
+    transition: box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out); font-family: inherit; letter-spacing: -0.01em;
+  }
+  input:focus, textarea:focus { background: #FFFFFF; box-shadow: 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px rgba(60,60,67,0.10); }
+  input.invalid { box-shadow: 0 0 0 3.5px rgba(255,59,48,0.16), inset 0 0 0 1px rgba(255,59,48,0.5); }
+  textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
+  ::placeholder { color: var(--label-3); font-weight: 400; }
+  .with-unit { display: flex; align-items: center; gap: 10px; }
+  .with-unit .unit { font-size: 15px; font-weight: 400; color: var(--label-3); }
+
+  /* ── Chips (sexo, cómo me conociste) ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 0.5px solid var(--hairline); background: var(--field); color: var(--label);
+    font-size: 15px; font-weight: 500; letter-spacing: -0.01em; padding: 10px 15px; border-radius: 999px;
+    cursor: pointer; font-family: inherit; transition: transform 0.12s var(--ease-out), background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip.sel { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 1px 3px rgba(52,199,89,0.35); }
+
+  .nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,0.72); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+    border-top: 0.5px solid rgba(0,0,0,0.10); padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  }
+  .nav-inner { max-width: 500px; margin: 0 auto; display: flex; gap: 10px; }
+  .btn { flex: 1; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; padding: 15px; cursor: pointer; font-family: inherit; transition: transform 0.13s var(--ease-out), opacity 0.2s, background 0.2s; }
+  .btn:active { transform: scale(0.96); }
+  .btn-next { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(52,199,89,0.35); }
+  .btn-next:disabled { opacity: 0.5; box-shadow: none; }
+  .btn-back { background: rgba(118,118,128,0.12); color: var(--label); flex: 0 0 96px; }
+  .btn-back:active { background: rgba(118,118,128,0.20); }
+
+  .success { text-align: center; padding: 76px 10px 30px; display: none; }
+  .success.active { display: block; animation: stepIn 0.5s var(--ease-spring); }
+  .check-ring { width: 96px; height: 96px; margin: 0 auto 28px; border-radius: 50%; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; animation: pop 0.62s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes pop { from { transform: scale(0.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .check-ring svg { width: 46px; height: 46px; stroke: var(--accent); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 0.55s 0.3s forwards var(--ease-out); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .success h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .success p { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.55; max-width: 320px; margin: 0 auto; letter-spacing: -0.01em; }
+
+  .error-banner { display: none; background: rgba(255,59,48,0.10); border: 0.5px solid rgba(255,59,48,0.35); color: var(--danger); font-size: 14px; font-weight: 400; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px; line-height: 1.45; letter-spacing: -0.01em; }
+
+  .spinner { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.45); border-top-color: #fff; animation: spin 0.7s linear infinite; vertical-align: -4px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step.active, .success.active { animation: fadeIn 0.25s ease; }
+    .check-ring { animation: fadeIn 0.25s ease; }
+    .check-ring svg { animation: none; stroke-dashoffset: 0; }
+    .progress-fill { transition: width 0.25s ease; }
+    .btn:active, .chip:active { transform: none; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  }
+  @media (prefers-reduced-transparency: reduce) { .nav { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app">
+    <div id="form-area">
+      <div class="head-rule">
+        <div class="brand">MADA Nutrición · Primera consulta</div>
+        <div class="greeting" id="greeting">Cuéntame sobre ti 👋</div>
+        <div class="week-meta">Estos datos son el punto de partida de tu plan. Se tratan de forma confidencial.</div>
+      </div>
+
+      <div class="progress-row">
+        <span class="step-label" id="step-name"></span>
+        <span class="step-count" id="step-count"></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress" style="width:25%"></div></div>
+
+      <div class="error-banner" id="error-banner"></div>
+
+      <!-- PASO 1 · Datos personales -->
+      <section class="step active" data-name="Sobre ti">
+        <div class="step-icon">👤</div>
+        <div class="step-title">Tus datos</div>
+        <div class="step-desc">Para poder identificarte y ponerme en contacto contigo.</div>
+
+        <div class="card">
+          <label class="field-label">Nombre y apellidos <span class="req">*</span></label>
+          <input type="text" id="nombre" autocomplete="name" placeholder="Nombre y apellidos">
+        </div>
+        <div class="card">
+          <label class="field-label">Email <span class="req">*</span></label>
+          <input type="email" id="email" autocomplete="email" inputmode="email" placeholder="tucorreo@ejemplo.com">
+        </div>
+        <div class="card">
+          <label class="field-label">Teléfono / WhatsApp <span class="optional">· opcional</span></label>
+          <input type="tel" id="telefono" autocomplete="tel" inputmode="tel" placeholder="600 123 456">
+        </div>
+        <div class="card">
+          <label class="field-label">Sexo</label>
+          <div class="chips" data-chip="sexo">
+            <button type="button" class="chip" data-val="female">Mujer</button>
+            <button type="button" class="chip" data-val="male">Hombre</button>
+          </div>
+        </div>
+        <div class="card">
+          <label class="field-label">Edad <span class="optional">· años</span></label>
+          <div class="with-unit"><input type="number" id="edad" inputmode="numeric" min="10" max="110" step="1" placeholder="35"><span class="unit">años</span></div>
+        </div>
+      </section>
+
+      <!-- PASO 2 · Medidas -->
+      <section class="step" data-name="Medidas">
+        <div class="step-icon">📏</div>
+        <div class="step-title">Tus medidas</div>
+        <div class="step-desc">Un punto de partida aproximado; ya lo afinaremos en la consulta.</div>
+
+        <div class="card">
+          <label class="field-label">Altura</label>
+          <div class="with-unit"><input type="number" id="altura_cm" inputmode="numeric" min="120" max="230" step="1" placeholder="170"><span class="unit">cm</span></div>
+        </div>
+        <div class="card">
+          <label class="field-label">Peso actual</label>
+          <div class="with-unit"><input type="number" id="peso_actual" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"><span class="unit">kg</span></div>
+        </div>
+        <div class="card">
+          <label class="field-label">Peso habitual <span class="optional">· tu peso "de siempre"</span></label>
+          <div class="with-unit"><input type="number" id="peso_habitual" inputmode="decimal" min="30" max="300" step="0.1" placeholder="68"><span class="unit">kg</span></div>
+        </div>
+      </section>
+
+      <!-- PASO 3 · Objetivo -->
+      <section class="step" data-name="Objetivo">
+        <div class="step-icon">🎯</div>
+        <div class="step-title">Tu objetivo</div>
+        <div class="step-desc">Lo más importante: qué quieres conseguir y por qué.</div>
+
+        <div class="card">
+          <label class="field-label">¿Cómo me has conocido? <span class="optional">· opcional</span></label>
+          <div class="chips" data-chip="como_conociste">
+            <button type="button" class="chip" data-val="Instagram">Instagram</button>
+            <button type="button" class="chip" data-val="Recomendación">Recomendación</button>
+            <button type="button" class="chip" data-val="Google">Google</button>
+            <button type="button" class="chip" data-val="TikTok">TikTok</button>
+            <button type="button" class="chip" data-val="Otro">Otro</button>
+          </div>
+        </div>
+        <div class="card">
+          <label class="field-label">Motivo de la consulta y objetivos</label>
+          <textarea id="motivo" placeholder="Qué te gustaría conseguir, en qué plazo, qué has probado antes…"></textarea>
+        </div>
+      </section>
+
+      <!-- PASO 4 · Salud -->
+      <section class="step" data-name="Salud">
+        <div class="step-icon">🩺</div>
+        <div class="step-title">Tu salud</div>
+        <div class="step-desc">Para diseñar un plan seguro y a tu medida. Déjalo en blanco si no aplica.</div>
+
+        <div class="card">
+          <label class="field-label">¿Alguna patología, alergia o intolerancia? <span class="optional">· opcional</span></label>
+          <textarea id="patologias" placeholder="Diabetes, hipotiroidismo, celiaquía, intolerancia a la lactosa…"></textarea>
+        </div>
+        <div class="card">
+          <label class="field-label">Antecedentes familiares <span class="optional">· opcional</span></label>
+          <textarea id="antecedentes" placeholder="Enfermedades en familiares cercanos (padres, hermanos)…"></textarea>
+        </div>
+        <div class="card">
+          <label class="field-label">Medicación o suplementación <span class="optional">· opcional</span></label>
+          <textarea id="medicacion" placeholder="Medicamentos, suplementos, productos de herbolario…"></textarea>
+        </div>
+        <div class="card">
+          <label class="field-label">¿Tienes analíticas o pruebas recientes? <span class="optional">· opcional</span></label>
+          <input type="text" id="documentacion" placeholder="Sí, una analítica de hace 2 meses / No">
+        </div>
+      </section>
+    </div>
+
+    <div class="success" id="success">
+      <div class="check-ring"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
+      <h2 id="success-title">¡Recibido!</h2>
+      <p>Gracias por tus datos. Los revisaré antes de nuestra primera consulta y me pondré en contacto contigo. 💪</p>
+    </div>
+
+    <div class="nav" id="nav">
+      <div class="nav-inner">
+        <button type="button" class="btn btn-back" id="btn-back" style="visibility:hidden">Atrás</button>
+        <button type="button" class="btn btn-next" id="btn-next">Continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Mismo endpoint que el semanal; el doPost distingue por form:'intake'.
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbyM62Rpb_tnwhEj_F-w3MaKZgba98VmHhn4iFCx3UiRwHbIZi84JGFtpe1Qrefi7D0d4Q/exec';
+  var DRAFT_KEY = 'mada_intake_v1';
+
+  var TEXT_IDS = ['nombre','email','telefono','edad','altura_cm','peso_actual','peso_habitual','motivo','patologias','antecedentes','medicacion','documentacion'];
+  var chosen = { sexo: '', como_conociste: '' };
+
+  // ── Chips ──
+  document.querySelectorAll('.chips').forEach(function (group) {
+    var key = group.dataset.chip;
+    group.querySelectorAll('.chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var already = chip.classList.contains('sel');
+        group.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('sel'); });
+        if (!already) { chip.classList.add('sel'); chosen[key] = chip.dataset.val; }
+        else { chosen[key] = ''; }
+        saveDraft();
+      });
+    });
+  });
+
+  // ── Wizard ──
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var current = 0;
+  var btnNext = document.getElementById('btn-next');
+  var btnBack = document.getElementById('btn-back');
+
+  function show(i) {
+    steps.forEach(function (s, j) { s.classList.toggle('active', i === j); });
+    current = i;
+    document.getElementById('progress').style.width = ((i + 1) / steps.length * 100) + '%';
+    document.getElementById('step-name').textContent = steps[i].dataset.name;
+    document.getElementById('step-count').textContent = 'Paso ' + (i + 1) + ' de ' + steps.length;
+    btnBack.style.visibility = i === 0 ? 'hidden' : 'visible';
+    btnNext.textContent = i === steps.length - 1 ? 'Enviar ✓' : 'Continuar';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  btnBack.addEventListener('click', function () { if (current > 0) show(current - 1); });
+  btnNext.addEventListener('click', function () {
+    if (current === 0 && !validateStep1()) return;
+    if (current < steps.length - 1) { show(current + 1); saveDraft(); }
+    else submit();
+  });
+
+  function validateStep1() {
+    var banner = document.getElementById('error-banner');
+    var nombre = document.getElementById('nombre');
+    var email = document.getElementById('email');
+    var okName = nombre.value.trim().length > 1;
+    var okMail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim());
+    nombre.classList.toggle('invalid', !okName);
+    email.classList.toggle('invalid', !okMail);
+    if (okName && okMail) { banner.style.display = 'none'; return true; }
+    banner.textContent = 'Necesito al menos tu nombre y un email válido para continuar.';
+    banner.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return false;
+  }
+  ['nombre','email'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', function (e) { e.target.classList.remove('invalid'); });
+  });
+
+  // ── Borrador ──
+  function saveDraft() {
+    try {
+      var d = { _chips: chosen };
+      TEXT_IDS.forEach(function (id) { var el = document.getElementById(id); if (el && el.value !== '') d[id] = el.value; });
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch (e) {}
+  }
+  function loadDraft() {
+    try {
+      var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
+      Object.keys(d).forEach(function (id) {
+        if (id === '_chips') return;
+        var el = document.getElementById(id); if (el) el.value = d[id];
+      });
+      if (d._chips) {
+        chosen = d._chips;
+        document.querySelectorAll('.chips').forEach(function (group) {
+          var key = group.dataset.chip;
+          group.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('sel', c.dataset.val === chosen[key]); });
+        });
+      }
+    } catch (e) {}
+  }
+  document.addEventListener('input', function (e) { if (e.target.matches('input,textarea')) saveDraft(); });
+  loadDraft();
+  show(0);
+
+  // ── Envío ──
+  function collect() {
+    var data = { form: 'intake', sexo: chosen.sexo, como_conociste: chosen.como_conociste };
+    TEXT_IDS.forEach(function (id) {
+      var el = document.getElementById(id); if (!el) return;
+      if (el.type === 'number') { if (el.value !== '') data[id] = el.value.replace(',', '.'); }
+      else if (el.value.trim() !== '') data[id] = el.value.trim();
+    });
+    return data;
+  }
+
+  function submit() {
+    if (!validateStep1()) { show(0); return; }
+    var banner = document.getElementById('error-banner');
+    banner.style.display = 'none';
+    btnNext.disabled = true;
+    btnNext.innerHTML = '<span class="spinner"></span>Enviando…';
+    fetch(EXEC_URL, {
+      method: 'POST', mode: 'no-cors', credentials: 'omit', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(collect())
+    })
+      .then(function () {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        var nombre = (document.getElementById('nombre').value || '').trim().split(' ')[0];
+        document.getElementById('form-area').style.display = 'none';
+        document.getElementById('nav').style.display = 'none';
+        if (nombre) document.getElementById('success-title').textContent = '¡Gracias, ' + nombre + '!';
+        document.getElementById('success').classList.add('active');
+        window.scrollTo(0, 0);
+      })
+      .catch(function (err) {
+        btnNext.disabled = false;
+        btnNext.textContent = 'Reintentar envío';
+        banner.textContent = 'No se pudo enviar (' + ((err && err.message) || 'sin conexión') + '). Tus datos siguen guardados en este dispositivo: prueba otra vez.';
+        banner.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+  }
+</script>
+</body>
+</html>
