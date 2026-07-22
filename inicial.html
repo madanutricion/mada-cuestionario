@@ -77,7 +77,8 @@
   .grid-row:first-of-type { border-top: 0; }
   .grid-name { flex: 1; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
   .grid-opts { display: flex; gap: 5px; }
-  .grid-dot { width: 30px; height: 30px; border-radius: 50%; border: 0.5px solid var(--hairline); background: var(--field); font-size: 15px; line-height: 28px; text-align: center; cursor: pointer; transition: transform 0.1s var(--ease-out), box-shadow 0.15s; }
+  .grid-dot { width: 32px; height: 32px; border-radius: 50%; border: 0.5px solid var(--hairline); background: var(--field); font-size: 15px; font-weight: 600; color: var(--label-2); line-height: 30px; text-align: center; cursor: pointer; transition: transform 0.1s var(--ease-out), box-shadow 0.15s, background 0.15s, color 0.15s; }
+  .grid-dot.sel { color: var(--accent-ink); background: var(--accent); }
   .grid-dot:active { transform: scale(0.9); }
   .grid-dot.sel { box-shadow: 0 0 0 2px var(--accent), 0 1px 3px rgba(52,199,89,0.4); transform: scale(1.05); }
 
@@ -155,7 +156,7 @@
 
   // ── Esquema del formulario (6 secciones del cuestionario original) ──
   var GRID_FOODS = ['Cereales (pan, pasta, avena, arroz…)','Legumbres','Proteína vegetal (tofu, soja, tempeh…)','Verduras','Frutas','Tubérculos (patata, boniato…)','Carnes','Pescados','Lácteos','Huevo','Frutos secos y semillas'];
-  var GRID_LEVELS = [['love','❤️','Me encanta'],['like','🙂','Me gusta'],['ok','😐','Normal'],['tol','😕','Lo tolero'],['no','🚫','Lo detesto']];
+  var GRID_LEVELS = [['love','5','Me encanta'],['like','4','Me gusta'],['ok','3','Normal'],['tol','2','Lo tolero'],['no','1','Lo detesto']];
 
   var STEPS = [
     { name:'Sobre ti', icon:'👤', title:'Tus datos', desc:'Para identificarte y poder contactar contigo.', fields:[
