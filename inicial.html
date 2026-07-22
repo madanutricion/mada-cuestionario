@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cuestionario inicial · MADA Nutrición</title>
 <style>
-  /* MADA · Cuestionario inicial — mismo sistema Apple Health (claro) que el semanal.
-     Página estática (GitHub Pages) → POST al doPost del Apps Script (form:'intake')
-     → pestaña INICIAL de la hoja → la app crea el cliente tras tu revisión. */
+  /* MADA · Cuestionario inicial — estética Apple Health (claro), data-driven.
+     Página estática (GitHub Pages) → POST (form:'intake') al doPost del Apps
+     Script → pestaña INICIAL → la app crea el cliente tras tu revisión.
+     Todas las respuestas viajan también como raw_json (a prueba de futuros campos). */
   :root {
     color-scheme: light;
     --bg: #F2F2F7; --card: #FFFFFF; --field: #EFEFF4;
@@ -38,7 +39,7 @@
   .step-label { font-size: 12px; font-weight: 600; color: var(--label-2); letter-spacing: 0.2px; }
   .step-count { font-size: 12px; font-weight: 400; color: var(--label-3); font-variant-numeric: tabular-nums; }
   .progress-track { height: 4px; background: rgba(120,120,128,0.20); border-radius: 999px; overflow: hidden; margin-bottom: 30px; }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.55s var(--ease-spring); }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.5s var(--ease-spring); }
 
   .step { display: none; }
   .step.active { display: block; animation: stepIn 0.5s var(--ease-spring); }
@@ -52,33 +53,38 @@
   .field-label .req { color: var(--accent-strong); }
   .optional { color: var(--label-3); font-weight: 400; font-size: 13px; }
 
-  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea {
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"], textarea, select {
     width: 100%; background: var(--field); border: none; border-radius: 12px; color: var(--label);
     font-size: 16px; font-weight: 400; padding: 14px 15px; outline: none;
     transition: box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out); font-family: inherit; letter-spacing: -0.01em;
   }
-  input:focus, textarea:focus { background: #FFFFFF; box-shadow: 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px rgba(60,60,67,0.10); }
+  select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+  input:focus, textarea:focus, select:focus { background: #FFFFFF; box-shadow: 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px rgba(60,60,67,0.10); }
   input.invalid { box-shadow: 0 0 0 3.5px rgba(255,59,48,0.16), inset 0 0 0 1px rgba(255,59,48,0.5); }
   textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
   ::placeholder { color: var(--label-3); font-weight: 400; }
   .with-unit { display: flex; align-items: center; gap: 10px; }
   .with-unit .unit { font-size: 15px; font-weight: 400; color: var(--label-3); }
 
-  /* ── Chips (sexo, cómo me conociste) ── */
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    border: 0.5px solid var(--hairline); background: var(--field); color: var(--label);
-    font-size: 15px; font-weight: 500; letter-spacing: -0.01em; padding: 10px 15px; border-radius: 999px;
-    cursor: pointer; font-family: inherit; transition: transform 0.12s var(--ease-out), background 0.15s, color 0.15s, box-shadow 0.15s;
-  }
+  .chip { border: 0.5px solid var(--hairline); background: var(--field); color: var(--label); font-size: 15px; font-weight: 500; letter-spacing: -0.01em; padding: 10px 15px; border-radius: 999px; cursor: pointer; font-family: inherit; transition: transform 0.12s var(--ease-out), background 0.15s, color 0.15s, box-shadow 0.15s; }
   .chip:active { transform: scale(0.96); }
   .chip.sel { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 1px 3px rgba(52,199,89,0.35); }
 
-  .nav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(255,255,255,0.72); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
-    border-top: 0.5px solid rgba(0,0,0,0.10); padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
-  }
+  /* Rejilla de preferencias */
+  .grid-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--label-3); margin-bottom: 14px; }
+  .grid-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 0.5px solid var(--hairline); }
+  .grid-row:first-of-type { border-top: 0; }
+  .grid-name { flex: 1; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+  .grid-opts { display: flex; gap: 5px; }
+  .grid-dot { width: 30px; height: 30px; border-radius: 50%; border: 0.5px solid var(--hairline); background: var(--field); font-size: 15px; line-height: 28px; text-align: center; cursor: pointer; transition: transform 0.1s var(--ease-out), box-shadow 0.15s; }
+  .grid-dot:active { transform: scale(0.9); }
+  .grid-dot.sel { box-shadow: 0 0 0 2px var(--accent), 0 1px 3px rgba(52,199,89,0.4); transform: scale(1.05); }
+
+  /* Recordatorio de comidas */
+  .meal-label { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: var(--accent-strong); text-transform: uppercase; margin-bottom: 8px; }
+
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.72); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-top: 0.5px solid rgba(0,0,0,0.10); padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); }
   .nav-inner { max-width: 500px; margin: 0 auto; display: flex; gap: 10px; }
   .btn { flex: 1; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; padding: 15px; cursor: pointer; font-family: inherit; transition: transform 0.13s var(--ease-out), opacity 0.2s, background 0.2s; }
   .btn:active { transform: scale(0.96); }
@@ -97,16 +103,14 @@
   .success p { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.55; max-width: 320px; margin: 0 auto; letter-spacing: -0.01em; }
 
   .error-banner { display: none; background: rgba(255,59,48,0.10); border: 0.5px solid rgba(255,59,48,0.35); color: var(--danger); font-size: 14px; font-weight: 400; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px; line-height: 1.45; letter-spacing: -0.01em; }
-
   .spinner { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.45); border-top-color: #fff; animation: spin 0.7s linear infinite; vertical-align: -4px; margin-right: 8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (prefers-reduced-motion: reduce) {
     .step.active, .success.active { animation: fadeIn 0.25s ease; }
-    .check-ring { animation: fadeIn 0.25s ease; }
-    .check-ring svg { animation: none; stroke-dashoffset: 0; }
+    .check-ring { animation: fadeIn 0.25s ease; } .check-ring svg { animation: none; stroke-dashoffset: 0; }
     .progress-fill { transition: width 0.25s ease; }
-    .btn:active, .chip:active { transform: none; }
+    .btn:active, .chip:active, .grid-dot:active { transform: none; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   }
   @media (prefers-reduced-transparency: reduce) { .nav { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; } }
@@ -118,114 +122,16 @@
     <div id="form-area">
       <div class="head-rule">
         <div class="brand">MADA Nutrición · Primera consulta</div>
-        <div class="greeting" id="greeting">Cuéntame sobre ti 👋</div>
-        <div class="week-meta">Estos datos son el punto de partida de tu plan. Se tratan de forma confidencial.</div>
+        <div class="greeting">Cuéntame sobre ti 👋</div>
+        <div class="week-meta">Cuanto más detalle, mejor tu plan. Se trata todo de forma confidencial.</div>
       </div>
-
       <div class="progress-row">
         <span class="step-label" id="step-name"></span>
         <span class="step-count" id="step-count"></span>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="progress" style="width:25%"></div></div>
-
+      <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
       <div class="error-banner" id="error-banner"></div>
-
-      <!-- PASO 1 · Datos personales -->
-      <section class="step active" data-name="Sobre ti">
-        <div class="step-icon">👤</div>
-        <div class="step-title">Tus datos</div>
-        <div class="step-desc">Para poder identificarte y ponerme en contacto contigo.</div>
-
-        <div class="card">
-          <label class="field-label">Nombre y apellidos <span class="req">*</span></label>
-          <input type="text" id="nombre" autocomplete="name" placeholder="Nombre y apellidos">
-        </div>
-        <div class="card">
-          <label class="field-label">Email <span class="req">*</span></label>
-          <input type="email" id="email" autocomplete="email" inputmode="email" placeholder="tucorreo@ejemplo.com">
-        </div>
-        <div class="card">
-          <label class="field-label">Teléfono / WhatsApp <span class="optional">· opcional</span></label>
-          <input type="tel" id="telefono" autocomplete="tel" inputmode="tel" placeholder="600 123 456">
-        </div>
-        <div class="card">
-          <label class="field-label">Sexo</label>
-          <div class="chips" data-chip="sexo">
-            <button type="button" class="chip" data-val="female">Mujer</button>
-            <button type="button" class="chip" data-val="male">Hombre</button>
-          </div>
-        </div>
-        <div class="card">
-          <label class="field-label">Edad <span class="optional">· años</span></label>
-          <div class="with-unit"><input type="number" id="edad" inputmode="numeric" min="10" max="110" step="1" placeholder="35"><span class="unit">años</span></div>
-        </div>
-      </section>
-
-      <!-- PASO 2 · Medidas -->
-      <section class="step" data-name="Medidas">
-        <div class="step-icon">📏</div>
-        <div class="step-title">Tus medidas</div>
-        <div class="step-desc">Un punto de partida aproximado; ya lo afinaremos en la consulta.</div>
-
-        <div class="card">
-          <label class="field-label">Altura</label>
-          <div class="with-unit"><input type="number" id="altura_cm" inputmode="numeric" min="120" max="230" step="1" placeholder="170"><span class="unit">cm</span></div>
-        </div>
-        <div class="card">
-          <label class="field-label">Peso actual</label>
-          <div class="with-unit"><input type="number" id="peso_actual" inputmode="decimal" min="30" max="300" step="0.1" placeholder="70"><span class="unit">kg</span></div>
-        </div>
-        <div class="card">
-          <label class="field-label">Peso habitual <span class="optional">· tu peso "de siempre"</span></label>
-          <div class="with-unit"><input type="number" id="peso_habitual" inputmode="decimal" min="30" max="300" step="0.1" placeholder="68"><span class="unit">kg</span></div>
-        </div>
-      </section>
-
-      <!-- PASO 3 · Objetivo -->
-      <section class="step" data-name="Objetivo">
-        <div class="step-icon">🎯</div>
-        <div class="step-title">Tu objetivo</div>
-        <div class="step-desc">Lo más importante: qué quieres conseguir y por qué.</div>
-
-        <div class="card">
-          <label class="field-label">¿Cómo me has conocido? <span class="optional">· opcional</span></label>
-          <div class="chips" data-chip="como_conociste">
-            <button type="button" class="chip" data-val="Instagram">Instagram</button>
-            <button type="button" class="chip" data-val="Recomendación">Recomendación</button>
-            <button type="button" class="chip" data-val="Google">Google</button>
-            <button type="button" class="chip" data-val="TikTok">TikTok</button>
-            <button type="button" class="chip" data-val="Otro">Otro</button>
-          </div>
-        </div>
-        <div class="card">
-          <label class="field-label">Motivo de la consulta y objetivos</label>
-          <textarea id="motivo" placeholder="Qué te gustaría conseguir, en qué plazo, qué has probado antes…"></textarea>
-        </div>
-      </section>
-
-      <!-- PASO 4 · Salud -->
-      <section class="step" data-name="Salud">
-        <div class="step-icon">🩺</div>
-        <div class="step-title">Tu salud</div>
-        <div class="step-desc">Para diseñar un plan seguro y a tu medida. Déjalo en blanco si no aplica.</div>
-
-        <div class="card">
-          <label class="field-label">¿Alguna patología, alergia o intolerancia? <span class="optional">· opcional</span></label>
-          <textarea id="patologias" placeholder="Diabetes, hipotiroidismo, celiaquía, intolerancia a la lactosa…"></textarea>
-        </div>
-        <div class="card">
-          <label class="field-label">Antecedentes familiares <span class="optional">· opcional</span></label>
-          <textarea id="antecedentes" placeholder="Enfermedades en familiares cercanos (padres, hermanos)…"></textarea>
-        </div>
-        <div class="card">
-          <label class="field-label">Medicación o suplementación <span class="optional">· opcional</span></label>
-          <textarea id="medicacion" placeholder="Medicamentos, suplementos, productos de herbolario…"></textarea>
-        </div>
-        <div class="card">
-          <label class="field-label">¿Tienes analíticas o pruebas recientes? <span class="optional">· opcional</span></label>
-          <input type="text" id="documentacion" placeholder="Sí, una analítica de hace 2 meses / No">
-        </div>
-      </section>
+      <div id="steps"></div>
     </div>
 
     <div class="success" id="success">
@@ -244,24 +150,165 @@
 </div>
 
 <script>
-  // Mismo endpoint que el semanal; el doPost distingue por form:'intake'.
-  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbyM62Rpb_tnwhEj_F-w3MaKZgba98VmHhn4iFCx3UiRwHbIZi84JGFtpe1Qrefi7D0d4Q/exec';
-  var DRAFT_KEY = 'mada_intake_v1';
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbyIyK5IG7PCWGLeG8gIlxZQJ_WkHztQb-WyxRhihTNzE086Ty47mDsMIOBTqc-A9OydzA/exec';
+  var DRAFT_KEY = 'mada_intake_v2';
 
-  var TEXT_IDS = ['nombre','email','telefono','edad','altura_cm','peso_actual','peso_habitual','motivo','patologias','antecedentes','medicacion','documentacion'];
-  var chosen = { sexo: '', como_conociste: '' };
+  // ── Esquema del formulario (6 secciones del cuestionario original) ──
+  var GRID_FOODS = ['Cereales (pan, pasta, avena, arroz…)','Legumbres','Proteína vegetal (tofu, soja, tempeh…)','Verduras','Frutas','Tubérculos (patata, boniato…)','Carnes','Pescados','Lácteos','Huevo','Frutos secos y semillas'];
+  var GRID_LEVELS = [['love','❤️','Me encanta'],['like','🙂','Me gusta'],['ok','😐','Normal'],['tol','😕','Lo tolero'],['no','🚫','Lo detesto']];
 
-  // ── Chips ──
-  document.querySelectorAll('.chips').forEach(function (group) {
-    var key = group.dataset.chip;
-    group.querySelectorAll('.chip').forEach(function (chip) {
-      chip.addEventListener('click', function () {
-        var already = chip.classList.contains('sel');
-        group.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('sel'); });
-        if (!already) { chip.classList.add('sel'); chosen[key] = chip.dataset.val; }
-        else { chosen[key] = ''; }
+  var STEPS = [
+    { name:'Sobre ti', icon:'👤', title:'Tus datos', desc:'Para identificarte y poder contactar contigo.', fields:[
+      { id:'nombre', label:'Nombre y apellidos', req:true, type:'text', ph:'Nombre y apellidos', ac:'name' },
+      { id:'email', label:'Email', req:true, type:'email', ph:'tucorreo@ejemplo.com', ac:'email' },
+      { id:'telefono', label:'Teléfono / WhatsApp', opt:true, type:'tel', ph:'600 123 456', ac:'tel' },
+      { id:'sexo', label:'Sexo', type:'chips', opts:[['female','Mujer'],['male','Hombre']] },
+      { id:'edad', label:'Edad', opt:true, type:'number', unit:'años', ph:'35' },
+      { id:'como_conociste', label:'¿Cómo me has conocido?', opt:true, type:'chips', opts:['Redes sociales','Antiguos pacientes','Amigos','Otro'] },
+    ]},
+    { name:'Medidas', icon:'📏', title:'Tus medidas', desc:'Un punto de partida; ya lo afinamos en consulta.', fields:[
+      { id:'altura_cm', label:'Altura', type:'number', unit:'cm', ph:'170' },
+      { id:'peso_actual', label:'Peso actual', type:'number', unit:'kg', ph:'70' },
+      { id:'peso_habitual', label:'Peso habitual', hint:'Si has tenido variaciones de peso, especifícalas.', type:'textarea', ph:'Mi peso de siempre es ~68 kg; el año pasado llegué a 75…' },
+    ]},
+    { name:'Salud', icon:'🩺', title:'Tu salud', desc:'Para un plan seguro. Déjalo en blanco si no aplica.', fields:[
+      { id:'motivo', label:'Motivo de la consulta y objetivos', type:'textarea', ph:'Qué quieres conseguir a corto y largo plazo…' },
+      { id:'patologias', label:'¿Alguna patología, alteración o enfermedad actual?', hint:'Digestiva, tiroides, diabetes, tensión, colesterol, alergias, cirugías…', type:'textarea', ph:'Indícalas todas' },
+      { id:'antecedentes', label:'Enfermedades en familiares cercanos', hint:'Padres, herman@s, tí@s, abuel@s: digestivo, colesterol, diabetes, tiroides, cáncer, obesidad…', type:'textarea', ph:'Indica cuál/es' },
+      { id:'medicacion', label:'Medicación, suplementación o herbolario', hint:'Actual o reciente: nombre, dosis, hora y duración. Incluye antigua/crónica y reacciones adversas.', type:'textarea', ph:'Nombre, dosis, cuándo…' },
+      { id:'documentacion', label:'¿Analíticas o pruebas médicas recientes?', opt:true, type:'textarea', ph:'Sí, te las envío por email/Drive / No' },
+    ]},
+    { name:'Día a día', icon:'📆', title:'Tu día a día', desc:'Tu rutina y hábitos me ayudan a que el plan encaje contigo.', fields:[
+      { id:'trabajo', label:'¿En qué trabajas o a qué te dedicas?', type:'text', ph:'Profesión / ocupación' },
+      { id:'horas_trabajo', label:'Horas de trabajo u ocupación', opt:true, type:'text', ph:'Ej. 9:00–18:00, turnos…' },
+      { id:'situacion_economica', label:'¿Situación económica complicada?', opt:true, type:'chips', opts:['No','Un poco','Sí'] },
+      { id:'fuma', label:'¿Fumas?', type:'chips', opts:['No','Ocasionalmente','Sí'] },
+      { id:'alcohol', label:'¿Consumes alcohol?', type:'chips', opts:['No','Ocasionalmente','Habitualmente'] },
+      { id:'dia_a_dia_otros', label:'Otras aportaciones de tu día a día', opt:true, type:'textarea', ph:'Aficiones, nivel de estrés, lo que quieras…' },
+      { id:'asesoramientos_previos', label:'¿Has hecho otros asesoramientos nutricionales? ¿Qué tal?', opt:true, type:'textarea', ph:'Con quién, cuándo y cómo te fue…' },
+    ]},
+    { name:'Cocina', icon:'🍳', title:'Hábitos en la cocina', desc:'Cómo y qué sueles cocinar.', fields:[
+      { id:'cocina_tiempo', label:'¿Cocinas y tienes tiempo, o vas más de comida rápida?', type:'textarea', ph:'Cuéntame tu manejo y tiempo en la cocina…' },
+      { id:'cocciones_disponibles', label:'Métodos de cocción que tienes disponibles', type:'checks', opts:['Plancha','Cocido','Vapor','Horno','Microondas','Airfryer','Freidora','Barbacoa'] },
+      { id:'cocciones', label:'Cocciones que más usas', opt:true, type:'textarea', ph:'Plancha, horno, vapor…' },
+      { id:'guarniciones', label:'Guarniciones que más usas', opt:true, type:'textarea', ph:'Cremas de verdura, salteados, ensaladas, patata, arroz…' },
+      { id:'aceite', label:'¿Qué aceite usas para cocinar y para aliñar en crudo?', opt:true, type:'text', ph:'Oliva virgen extra, girasol…' },
+      { id:'integral_blanco', label:'El pan, pasta o harinas que consumes, ¿integrales o blancos?', type:'chips', opts:['Integrales','Blancos','Ambos'] },
+      { id:'hora_hambre', label:'¿En qué momento del día tienes más hambre?', opt:true, type:'text', ph:'Media tarde, antes de cenar…' },
+      { id:'num_frutas_dia', label:'Nº de frutas al día', type:'select', min:0, max:10 },
+      { id:'num_legumbres_semana', label:'Nº de legumbres a la semana', type:'select', min:0, max:10 },
+    ]},
+    { name:'Preferencias', icon:'😋', title:'Tus preferencias', desc:'Marca cuánto te gusta cada grupo de alimentos.', fields:[
+      { id:'preferencias', label:'', type:'grid' },
+    ]},
+    { name:'Un día', icon:'🍽️', title:'Un día de comidas', desc:'Qué sueles comer (indica hora, lugar y compañía si puedes).', fields:[
+      { id:'comida_desayuno', label:'Desayuno', type:'meal', ph:'Ej. 7:00 tostadas de pan integral con pavo, en casa…' },
+      { id:'comida_media', label:'Media mañana', type:'meal', ph:'Fruta, café…' },
+      { id:'comida_comida', label:'Comida', type:'meal' },
+      { id:'comida_merienda', label:'Merienda', type:'meal' },
+      { id:'comida_cena', label:'Cena', type:'meal' },
+      { id:'comida_extra', label:'Extra', hint:'Picoteos, fin de semana… (indica cuándo)', type:'meal' },
+    ]},
+    { name:'Actividad', icon:'🏃', title:'Actividad física', desc:'Tu nivel de movimiento y ejercicio.', fields:[
+      { id:'actividad_fisica', label:'¿Qué actividad o ejercicio realizas?', type:'checks', opts:['Gimnasio / pesas','Correr','Caminar','Ciclismo','Natación','Clases dirigidas','Deportes de equipo','Yoga / pilates','Ninguna'] },
+      { id:'actividad_detalle', label:'Detalle del ejercicio', opt:true, type:'text', ph:'Qué haces exactamente, intensidad…' },
+      { id:'dias_actividad', label:'¿Cuántos días a la semana?', type:'select', min:0, max:7 },
+      { id:'pasos_dia', label:'Pasos aproximados al día', opt:true, type:'chips', opts:['Menos de 5.000','5.000–8.000','8.000–12.000','Más de 12.000','No lo sé'] },
+      { id:'actividad_otros', label:'¿Algo más sobre tu actividad?', opt:true, type:'textarea', ph:'Lo que quieras añadir…' },
+    ]},
+    { name:'Descanso', icon:'😴', title:'Hábitos de sueño', desc:'El descanso influye mucho en los resultados.', fields:[
+      { id:'horario_sueno', label:'Hora de levantarte y de acostarte', type:'text', ph:'Ej. me levanto 7:00, me acuesto 23:30' },
+      { id:'horas_sueno', label:'¿Cuánto sueles dormir?', type:'chips', opts:['Menos de 6 h','6–7 h','7–8 h','Más de 8 h'] },
+      { id:'buen_descanso', label:'¿Consideras que descansas bien?', type:'chips', opts:['Sí','A veces','No'] },
+      { id:'cuesta_conciliar', label:'¿Te cuesta conciliar el sueño?', type:'chips', opts:['No','A veces','Sí'] },
+      { id:'pantallas_antes_dormir', label:'¿Usas pantallas antes de dormir (móvil, TV, tablet)?', type:'chips', opts:['No','A veces','Sí'] },
+    ]},
+  ];
+
+  // ── Estado de controles no-input ──
+  var chips = {};   // {fieldId: value}
+  var checks = {};  // {fieldId: [values]}
+  var grid = {};    // {food: levelValue}
+
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ── Render ──
+  function fieldHTML(f) {
+    var lab = f.label ? '<label class="field-label">'+esc(f.label)+(f.req?' <span class="req">*</span>':(f.opt?' <span class="optional">· opcional</span>':''))+'</label>' : '';
+    var hint = f.hint ? '<div class="optional" style="margin-top:-6px;margin-bottom:12px;">'+esc(f.hint)+'</div>' : '';
+    var body = '';
+    if (f.type==='text'||f.type==='email'||f.type==='tel') {
+      var im = f.type==='email'?' inputmode="email"':(f.type==='tel'?' inputmode="tel"':'');
+      body = '<input type="'+f.type+'" id="'+f.id+'"'+(f.ac?' autocomplete="'+f.ac+'"':'')+im+' placeholder="'+esc(f.ph||'')+'">';
+    } else if (f.type==='number') {
+      body = '<div class="with-unit"><input type="number" id="'+f.id+'" inputmode="decimal" placeholder="'+esc(f.ph||'')+'">'+(f.unit?'<span class="unit">'+esc(f.unit)+'</span>':'')+'</div>';
+    } else if (f.type==='textarea') {
+      body = '<textarea id="'+f.id+'" placeholder="'+esc(f.ph||'')+'"></textarea>';
+    } else if (f.type==='meal') {
+      body = '<textarea id="'+f.id+'" style="min-height:64px" placeholder="'+esc(f.ph||'—')+'"></textarea>';
+    } else if (f.type==='select') {
+      var o = '<option value="">—</option>';
+      for (var n=f.min; n<=f.max; n++) o += '<option value="'+n+'">'+n+(n===f.max?'+':'')+'</option>';
+      body = '<select id="'+f.id+'">'+o+'</select>';
+    } else if (f.type==='chips') {
+      body = '<div class="chips" data-chip="'+f.id+'">'+f.opts.map(function(o){
+        var v = Array.isArray(o)?o[0]:o, l = Array.isArray(o)?o[1]:o;
+        return '<button type="button" class="chip" data-val="'+esc(v)+'">'+esc(l)+'</button>';
+      }).join('')+'</div>';
+    } else if (f.type==='checks') {
+      body = '<div class="chips" data-checks="'+f.id+'">'+f.opts.map(function(o){
+        return '<button type="button" class="chip" data-val="'+esc(o)+'">'+esc(o)+'</button>';
+      }).join('')+'</div>';
+    } else if (f.type==='grid') {
+      var legend = '<div class="grid-legend">'+GRID_LEVELS.map(function(l){return l[1]+' '+l[2];}).join(' · ')+'</div>';
+      var rows = GRID_FOODS.map(function(food){
+        var dots = GRID_LEVELS.map(function(l){ return '<div class="grid-dot" data-food="'+esc(food)+'" data-lvl="'+l[0]+'" title="'+l[2]+'">'+l[1]+'</div>'; }).join('');
+        return '<div class="grid-row"><div class="grid-name">'+esc(food)+'</div><div class="grid-opts">'+dots+'</div></div>';
+      }).join('');
+      body = legend + rows;
+    }
+    var wrapMeal = f.type==='meal' ? '<div class="meal-label">'+esc(f.label)+'</div>'+hint+body : lab+hint+body;
+    return '<div class="card">'+wrapMeal+'</div>';
+  }
+
+  var stepsWrap = document.getElementById('steps');
+  stepsWrap.innerHTML = STEPS.map(function(s, i){
+    return '<section class="step'+(i===0?' active':'')+'" data-name="'+esc(s.name)+'">'+
+      '<div class="step-icon">'+s.icon+'</div><div class="step-title">'+esc(s.title)+'</div>'+
+      '<div class="step-desc">'+esc(s.desc)+'</div>'+
+      s.fields.map(fieldHTML).join('')+'</section>';
+  }).join('');
+
+  // ── Interacciones chips / checks / grid ──
+  document.querySelectorAll('[data-chip]').forEach(function(g){
+    var key = g.dataset.chip;
+    g.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        var was = chip.classList.contains('sel');
+        g.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('sel'); });
+        if (!was) { chip.classList.add('sel'); chips[key]=chip.dataset.val; } else { chips[key]=''; }
         saveDraft();
       });
+    });
+  });
+  document.querySelectorAll('[data-checks]').forEach(function(g){
+    var key = g.dataset.checks; checks[key]=checks[key]||[];
+    g.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        chip.classList.toggle('sel');
+        checks[key] = Array.prototype.slice.call(g.querySelectorAll('.chip.sel')).map(function(c){return c.dataset.val;});
+        saveDraft();
+      });
+    });
+  });
+  document.querySelectorAll('.grid-dot').forEach(function(dot){
+    dot.addEventListener('click', function(){
+      var food = dot.dataset.food;
+      var row = dot.parentElement;
+      var already = dot.classList.contains('sel');
+      row.querySelectorAll('.grid-dot').forEach(function(d){ d.classList.remove('sel'); });
+      if (!already) { dot.classList.add('sel'); grid[food]=dot.dataset.lvl; } else { delete grid[food]; }
+      saveDraft();
     });
   });
 
@@ -270,107 +317,86 @@
   var current = 0;
   var btnNext = document.getElementById('btn-next');
   var btnBack = document.getElementById('btn-back');
-
-  function show(i) {
-    steps.forEach(function (s, j) { s.classList.toggle('active', i === j); });
+  function show(i){
+    steps.forEach(function(s,j){ s.classList.toggle('active', i===j); });
     current = i;
-    document.getElementById('progress').style.width = ((i + 1) / steps.length * 100) + '%';
+    document.getElementById('progress').style.width = ((i+1)/steps.length*100)+'%';
     document.getElementById('step-name').textContent = steps[i].dataset.name;
-    document.getElementById('step-count').textContent = 'Paso ' + (i + 1) + ' de ' + steps.length;
-    btnBack.style.visibility = i === 0 ? 'hidden' : 'visible';
-    btnNext.textContent = i === steps.length - 1 ? 'Enviar ✓' : 'Continuar';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('step-count').textContent = 'Paso '+(i+1)+' de '+steps.length;
+    btnBack.style.visibility = i===0?'hidden':'visible';
+    btnNext.textContent = i===steps.length-1?'Enviar ✓':'Continuar';
+    window.scrollTo({top:0, behavior:'smooth'});
   }
-  btnBack.addEventListener('click', function () { if (current > 0) show(current - 1); });
-  btnNext.addEventListener('click', function () {
-    if (current === 0 && !validateStep1()) return;
-    if (current < steps.length - 1) { show(current + 1); saveDraft(); }
-    else submit();
+  btnBack.addEventListener('click', function(){ if(current>0) show(current-1); });
+  btnNext.addEventListener('click', function(){
+    if (current===0 && !validateStep1()) return;
+    if (current < steps.length-1) { show(current+1); saveDraft(); } else submit();
   });
 
-  function validateStep1() {
+  function validateStep1(){
     var banner = document.getElementById('error-banner');
-    var nombre = document.getElementById('nombre');
-    var email = document.getElementById('email');
-    var okName = nombre.value.trim().length > 1;
-    var okMail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim());
-    nombre.classList.toggle('invalid', !okName);
-    email.classList.toggle('invalid', !okMail);
-    if (okName && okMail) { banner.style.display = 'none'; return true; }
+    var nombre = document.getElementById('nombre'), email = document.getElementById('email');
+    var okN = nombre.value.trim().length>1, okM = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim());
+    nombre.classList.toggle('invalid', !okN); email.classList.toggle('invalid', !okM);
+    if (okN && okM) { banner.style.display='none'; return true; }
     banner.textContent = 'Necesito al menos tu nombre y un email válido para continuar.';
-    banner.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return false;
+    banner.style.display='block'; window.scrollTo({top:0,behavior:'smooth'}); return false;
   }
-  ['nombre','email'].forEach(function (id) {
-    document.getElementById(id).addEventListener('input', function (e) { e.target.classList.remove('invalid'); });
-  });
+  ['nombre','email'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(e){ e.target.classList.remove('invalid'); }); });
 
   // ── Borrador ──
-  function saveDraft() {
+  function allInputIds(){ var ids=[]; STEPS.forEach(function(s){ s.fields.forEach(function(f){ if(['text','email','tel','number','textarea','meal','select'].indexOf(f.type)>=0) ids.push(f.id); }); }); return ids; }
+  function saveDraft(){
     try {
-      var d = { _chips: chosen };
-      TEXT_IDS.forEach(function (id) { var el = document.getElementById(id); if (el && el.value !== '') d[id] = el.value; });
+      var d = { _chips:chips, _checks:checks, _grid:grid };
+      allInputIds().forEach(function(id){ var el=document.getElementById(id); if(el && el.value!=='') d[id]=el.value; });
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-    } catch (e) {}
+    } catch(e){}
   }
-  function loadDraft() {
+  function loadDraft(){
     try {
-      var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
-      Object.keys(d).forEach(function (id) {
-        if (id === '_chips') return;
-        var el = document.getElementById(id); if (el) el.value = d[id];
-      });
-      if (d._chips) {
-        chosen = d._chips;
-        document.querySelectorAll('.chips').forEach(function (group) {
-          var key = group.dataset.chip;
-          group.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('sel', c.dataset.val === chosen[key]); });
-        });
-      }
-    } catch (e) {}
+      var d = JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}');
+      allInputIds().forEach(function(id){ if(d[id]!=null){ var el=document.getElementById(id); if(el) el.value=d[id]; } });
+      if (d._chips){ chips=d._chips; Object.keys(chips).forEach(function(k){ var g=document.querySelector('[data-chip="'+k+'"]'); if(g) g.querySelectorAll('.chip').forEach(function(c){ c.classList.toggle('sel', c.dataset.val===chips[k]); }); }); }
+      if (d._checks){ checks=d._checks; Object.keys(checks).forEach(function(k){ var g=document.querySelector('[data-checks="'+k+'"]'); if(g) g.querySelectorAll('.chip').forEach(function(c){ c.classList.toggle('sel', checks[k].indexOf(c.dataset.val)>=0); }); }); }
+      if (d._grid){ grid=d._grid; Object.keys(grid).forEach(function(food){ document.querySelectorAll('.grid-dot[data-food="'+CSS.escape(food)+'"]').forEach(function(dt){ dt.classList.toggle('sel', dt.dataset.lvl===grid[food]); }); }); }
+    } catch(e){}
   }
-  document.addEventListener('input', function (e) { if (e.target.matches('input,textarea')) saveDraft(); });
+  document.addEventListener('input', function(e){ if(e.target.matches('input,textarea,select')) saveDraft(); });
   loadDraft();
   show(0);
 
   // ── Envío ──
-  function collect() {
-    var data = { form: 'intake', sexo: chosen.sexo, como_conociste: chosen.como_conociste };
-    TEXT_IDS.forEach(function (id) {
-      var el = document.getElementById(id); if (!el) return;
-      if (el.type === 'number') { if (el.value !== '') data[id] = el.value.replace(',', '.'); }
-      else if (el.value.trim() !== '') data[id] = el.value.trim();
-    });
+  function collect(){
+    var data = { form:'intake' };
+    allInputIds().forEach(function(id){ var el=document.getElementById(id); if(el && el.value.trim()!=='') data[id]=el.value.trim(); });
+    Object.keys(chips).forEach(function(k){ if(chips[k]) data[k]=chips[k]; });
+    Object.keys(checks).forEach(function(k){ if(checks[k] && checks[k].length) data[k]=checks[k].join(', '); });
+    if (Object.keys(grid).length){
+      var lvlName = {}; GRID_LEVELS.forEach(function(l){ lvlName[l[0]]=l[2]; });
+      data.preferencias = Object.keys(grid).map(function(f){ return f+': '+lvlName[grid[f]]; }).join(' | ');
+    }
     return data;
   }
 
-  function submit() {
+  function submit(){
     if (!validateStep1()) { show(0); return; }
-    var banner = document.getElementById('error-banner');
-    banner.style.display = 'none';
-    btnNext.disabled = true;
-    btnNext.innerHTML = '<span class="spinner"></span>Enviando…';
-    fetch(EXEC_URL, {
-      method: 'POST', mode: 'no-cors', credentials: 'omit', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(collect())
-    })
-      .then(function () {
-        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-        var nombre = (document.getElementById('nombre').value || '').trim().split(' ')[0];
-        document.getElementById('form-area').style.display = 'none';
-        document.getElementById('nav').style.display = 'none';
-        if (nombre) document.getElementById('success-title').textContent = '¡Gracias, ' + nombre + '!';
-        document.getElementById('success').classList.add('active');
-        window.scrollTo(0, 0);
+    var banner = document.getElementById('error-banner'); banner.style.display='none';
+    btnNext.disabled=true; btnNext.innerHTML='<span class="spinner"></span>Enviando…';
+    fetch(EXEC_URL, { method:'POST', mode:'no-cors', credentials:'omit', redirect:'follow',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(collect()) })
+      .then(function(){
+        try { localStorage.removeItem(DRAFT_KEY); } catch(e){}
+        var nombre = (document.getElementById('nombre').value||'').trim().split(' ')[0];
+        document.getElementById('form-area').style.display='none';
+        document.getElementById('nav').style.display='none';
+        if (nombre) document.getElementById('success-title').textContent='¡Gracias, '+nombre+'!';
+        document.getElementById('success').classList.add('active'); window.scrollTo(0,0);
       })
-      .catch(function (err) {
-        btnNext.disabled = false;
-        btnNext.textContent = 'Reintentar envío';
-        banner.textContent = 'No se pudo enviar (' + ((err && err.message) || 'sin conexión') + '). Tus datos siguen guardados en este dispositivo: prueba otra vez.';
-        banner.style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      .catch(function(err){
+        btnNext.disabled=false; btnNext.textContent='Reintentar envío';
+        banner.textContent='No se pudo enviar ('+((err&&err.message)||'sin conexión')+'). Tus datos siguen guardados en este dispositivo: prueba otra vez.';
+        banner.style.display='block'; window.scrollTo({top:0,behavior:'smooth'});
       });
   }
 </script>
