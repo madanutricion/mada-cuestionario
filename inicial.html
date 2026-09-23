@@ -115,6 +115,11 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   }
   @media (prefers-reduced-transparency: reduce) { .nav { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+  .sport-row { margin-top: 10px; padding: 12px 14px; border: 1px solid rgba(128,128,128,.35); border-radius: 12px; }
+  .sport-name { font-weight: 600; margin-bottom: 8px; }
+  .sport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .sport-grid label { display: block; font-size: 11px; opacity: .7; margin-top: 4px; text-align: center; }
+  .sport-grid input { text-align: center; }
 </style>
 </head>
 <body>
@@ -158,13 +163,19 @@
   var GRID_FOODS = ['Cereales (pan, pasta, avena, arroz…)','Legumbres','Proteína vegetal (tofu, soja, tempeh…)','Verduras','Frutas','Tubérculos (patata, boniato…)','Carnes','Pescados','Lácteos','Huevo','Frutos secos y semillas'];
   var GRID_LEVELS = [['love','5','Me encanta'],['like','4','Me gusta'],['ok','3','Normal'],['tol','2','Lo tolero'],['no','1','Lo detesto']];
 
+  // Deportes que se convierten en «semana tipo» de entrenos en la app (clave · etiqueta).
+  var SPORT_KEYS = {'Gimnasio / pesas':'gym','Correr':'running','Ciclismo':'cycling','Natación':'swimming',
+                    'Clases dirigidas':'other','Deportes de equipo':'other','Yoga / pilates':'other'};
+  var INT_LABELS = {baja:'Suave', media:'Media', alta:'Intensa'};
+
   var STEPS = [
     { name:'Sobre ti', icon:'👤', title:'Tus datos', desc:'Para identificarte y poder contactar contigo.', fields:[
       { id:'nombre', label:'Nombre y apellidos', req:true, type:'text', ph:'Nombre y apellidos', ac:'name' },
       { id:'email', label:'Email', req:true, type:'email', ph:'tucorreo@ejemplo.com', ac:'email' },
       { id:'telefono', label:'Teléfono / WhatsApp', opt:true, type:'tel', ph:'600 123 456', ac:'tel' },
       { id:'sexo', label:'Sexo', type:'chips', opts:[['female','Mujer'],['male','Hombre']] },
-      { id:'edad', label:'Edad', opt:true, type:'number', unit:'años', ph:'35' },
+      { id:'fecha_nacimiento', label:'Fecha de nacimiento', type:'date' },
+      { id:'estado_hormonal', label:'Ciclo y etapa hormonal', hint:'Influye en hierro, calcio y energía.', showIf:{sexo:'female'}, type:'chips', opts:['Ciclo regular','Ciclo irregular','Anticonceptivos hormonales','Embarazo','Lactancia','Perimenopausia / menopausia'] },
       { id:'como_conociste', label:'¿Cómo me has conocido?', opt:true, type:'chips', opts:['Redes sociales','Antiguos pacientes','Amigos','Otro'] },
     ]},
     { name:'Medidas', icon:'📏', title:'Tus medidas', desc:'Un punto de partida; ya lo afinamos en consulta.', fields:[
@@ -172,26 +183,34 @@
       { id:'peso_actual', label:'Peso actual', type:'number', unit:'kg', ph:'70' },
       { id:'peso_habitual', label:'Peso habitual', hint:'Si has tenido variaciones de peso, especifícalas.', type:'textarea', ph:'Mi peso de siempre es ~68 kg; el año pasado llegué a 75…' },
     ]},
+    { name:'Objetivo', icon:'🎯', title:'Tu objetivo', desc:'Para orientar el plan desde el primer día.', fields:[
+      { id:'objetivo', label:'¿Qué quieres conseguir?', hint:'Puedes marcar más de uno.', type:'checks', opts:['Perder grasa','Ganar músculo','Rendimiento deportivo','Salud','Mejorar hábitos'] },
+      { id:'peso_objetivo', label:'Peso en el que te verías bien', opt:true, type:'number', unit:'kg', ph:'70' },
+      { id:'motivo', label:'Cuéntame más', type:'textarea', ph:'Qué quieres conseguir a corto y largo plazo, qué te ha traído hasta aquí…' },
+      { id:'asesoramientos_previos', label:'¿Has hecho otros asesoramientos nutricionales? ¿Qué tal?', opt:true, type:'textarea', ph:'Con quién, cuándo y cómo te fue…' },
+    ]},
     { name:'Salud', icon:'🩺', title:'Tu salud', desc:'Para un plan seguro. Déjalo en blanco si no aplica.', fields:[
-      { id:'motivo', label:'Motivo de la consulta y objetivos', type:'textarea', ph:'Qué quieres conseguir a corto y largo plazo…' },
-      { id:'patologias', label:'¿Alguna patología, alteración o enfermedad actual?', hint:'Digestiva, tiroides, diabetes, tensión, colesterol, alergias, cirugías…', type:'textarea', ph:'Indícalas todas' },
-      { id:'antecedentes', label:'Enfermedades en familiares cercanos', hint:'Padres, herman@s, tí@s, abuel@s: digestivo, colesterol, diabetes, tiroides, cáncer, obesidad…', type:'textarea', ph:'Indica cuál/es' },
+      { id:'alergias', label:'Alergias e intolerancias', hint:'Marca las que te afecten: el plan las tendrá en cuenta automáticamente.', type:'checks', opts:['Gluten','Lácteos','Huevos','Frutos de cáscara','Cacahuetes','Soja','Pescado','Crustáceos','Moluscos','Sésamo','Apio','Mostaza','Sulfitos','Altramuces'] },
+      { id:'alergias_otras', label:'Otros alimentos que no puedes o no quieres comer', opt:true, type:'text', ph:'Fresas, cerdo, picante…' },
+      { id:'digestivo', label:'¿Molestias digestivas habituales?', type:'checks', opts:['Ninguna','Hinchazón','Gases','Estreñimiento','Diarrea','Reflujo / acidez','Náuseas'] },
+      { id:'digestivo_detalle', label:'¿Cuándo y con qué alimentos?', opt:true, type:'text', ph:'Después de las legumbres, por la noche…' },
+      { id:'patologias', label:'¿Alguna patología, alteración o enfermedad actual?', hint:'Digestiva, tiroides, diabetes, tensión, colesterol, cirugías…', type:'textarea', ph:'Indícalas todas' },
+      { id:'antecedentes', label:'Enfermedades en familiares cercanos', hint:'Padres, herman@s, tí@s, abuel@s: digestivo, colesterol, diabetes, tiroides, cáncer, obesidad…', opt:true, type:'textarea', ph:'Indica cuál/es' },
       { id:'medicacion', label:'Medicación, suplementación o herbolario', hint:'Actual o reciente: nombre, dosis, hora y duración. Incluye antigua/crónica y reacciones adversas.', type:'textarea', ph:'Nombre, dosis, cuándo…' },
       { id:'documentacion', label:'¿Analíticas o pruebas médicas recientes?', opt:true, type:'textarea', ph:'Sí, te las envío por email/Drive / No' },
     ]},
     { name:'Día a día', icon:'📆', title:'Tu día a día', desc:'Tu rutina y hábitos me ayudan a que el plan encaje contigo.', fields:[
       { id:'trabajo', label:'¿En qué trabajas o a qué te dedicas?', type:'text', ph:'Profesión / ocupación' },
-      { id:'horas_trabajo', label:'Horas de trabajo u ocupación', opt:true, type:'text', ph:'Ej. 9:00–18:00, turnos…' },
+      { id:'trabajo_tipo', label:'Tu trabajo es sobre todo…', type:'chips', opts:['Sentado (oficina, coche)','De pie o moviéndome','Esfuerzo físico'] },
+      { id:'turnos', label:'Tu horario', type:'chips', opts:['Fijo','Partido','Turnos / noches','Sin horario fijo'] },
       { id:'situacion_economica', label:'¿Situación económica complicada?', opt:true, type:'chips', opts:['No','Un poco','Sí'] },
       { id:'fuma', label:'¿Fumas?', type:'chips', opts:['No','Ocasionalmente','Sí'] },
       { id:'alcohol', label:'¿Consumes alcohol?', type:'chips', opts:['No','Ocasionalmente','Habitualmente'] },
       { id:'dia_a_dia_otros', label:'Otras aportaciones de tu día a día', opt:true, type:'textarea', ph:'Aficiones, nivel de estrés, lo que quieras…' },
-      { id:'asesoramientos_previos', label:'¿Has hecho otros asesoramientos nutricionales? ¿Qué tal?', opt:true, type:'textarea', ph:'Con quién, cuándo y cómo te fue…' },
     ]},
     { name:'Cocina', icon:'🍳', title:'Hábitos en la cocina', desc:'Cómo y qué sueles cocinar.', fields:[
       { id:'cocina_tiempo', label:'¿Cocinas y tienes tiempo, o vas más de comida rápida?', type:'textarea', ph:'Cuéntame tu manejo y tiempo en la cocina…' },
       { id:'cocciones_disponibles', label:'Métodos de cocción que tienes disponibles', type:'checks', opts:['Plancha','Cocido','Vapor','Horno','Microondas','Airfryer','Freidora','Barbacoa'] },
-      { id:'cocciones', label:'Cocciones que más usas', opt:true, type:'textarea', ph:'Plancha, horno, vapor…' },
       { id:'guarniciones', label:'Guarniciones que más usas', opt:true, type:'textarea', ph:'Cremas de verdura, salteados, ensaladas, patata, arroz…' },
       { id:'aceite', label:'¿Qué aceite usas para cocinar y para aliñar en crudo?', opt:true, type:'text', ph:'Oliva virgen extra, girasol…' },
       { id:'integral_blanco', label:'El pan, pasta o harinas que consumes, ¿integrales o blancos?', type:'chips', opts:['Integrales','Blancos','Ambos'] },
@@ -212,10 +231,9 @@
     ]},
     { name:'Actividad', icon:'🏃', title:'Actividad física', desc:'Tu nivel de movimiento y ejercicio.', fields:[
       { id:'actividad_fisica', label:'¿Qué actividad o ejercicio realizas?', type:'checks', opts:['Gimnasio / pesas','Correr','Caminar','Ciclismo','Natación','Clases dirigidas','Deportes de equipo','Yoga / pilates','Ninguna'] },
-      { id:'actividad_detalle', label:'Detalle del ejercicio', opt:true, type:'text', ph:'Qué haces exactamente, intensidad…' },
-      { id:'dias_actividad', label:'¿Cuántos días a la semana?', type:'select', min:0, max:7 },
+      { id:'entrenos', label:'', type:'sports' },
       { id:'pasos_dia', label:'Pasos aproximados al día', opt:true, type:'chips', opts:['Menos de 5.000','5.000–8.000','8.000–12.000','Más de 12.000','No lo sé'] },
-      { id:'actividad_otros', label:'¿Algo más sobre tu actividad?', opt:true, type:'textarea', ph:'Lo que quieras añadir…' },
+      { id:'actividad_otros', label:'¿Algo más sobre tu actividad?', opt:true, type:'textarea', ph:'Competiciones a la vista, lesiones, lo que quieras añadir…' },
     ]},
     { name:'Descanso', icon:'😴', title:'Hábitos de sueño', desc:'El descanso influye mucho en los resultados.', fields:[
       { id:'horario_sueno', label:'Hora de levantarte y de acostarte', type:'text', ph:'Ej. me levanto 7:00, me acuesto 23:30' },
@@ -241,6 +259,10 @@
     if (f.type==='text'||f.type==='email'||f.type==='tel') {
       var im = f.type==='email'?' inputmode="email"':(f.type==='tel'?' inputmode="tel"':'');
       body = '<input type="'+f.type+'" id="'+f.id+'"'+(f.ac?' autocomplete="'+f.ac+'"':'')+im+' placeholder="'+esc(f.ph||'')+'">';
+    } else if (f.type==='date') {
+      body = '<input type="date" id="'+f.id+'">';
+    } else if (f.type==='sports') {
+      body = '<div class="sport-rows" id="sport-rows"></div>';
     } else if (f.type==='number') {
       body = '<div class="with-unit"><input type="number" id="'+f.id+'" inputmode="decimal" placeholder="'+esc(f.ph||'')+'">'+(f.unit?'<span class="unit">'+esc(f.unit)+'</span>':'')+'</div>';
     } else if (f.type==='textarea') {
@@ -269,7 +291,8 @@
       body = legend + rows;
     }
     var wrapMeal = f.type==='meal' ? '<div class="meal-label">'+esc(f.label)+'</div>'+hint+body : lab+hint+body;
-    return '<div class="card">'+wrapMeal+'</div>';
+    var showIf = f.showIf ? ' data-showif="'+Object.keys(f.showIf)[0]+'='+esc(f.showIf[Object.keys(f.showIf)[0]])+'" style="display:none"' : '';
+    return '<div class="card"'+showIf+'>'+wrapMeal+'</div>';
   }
 
   var stepsWrap = document.getElementById('steps');
@@ -288,7 +311,7 @@
         var was = chip.classList.contains('sel');
         g.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('sel'); });
         if (!was) { chip.classList.add('sel'); chips[key]=chip.dataset.val; } else { chips[key]=''; }
-        saveDraft();
+        applyShowIf(); saveDraft();
       });
     });
   });
@@ -298,6 +321,8 @@
       chip.addEventListener('click', function(){
         chip.classList.toggle('sel');
         checks[key] = Array.prototype.slice.call(g.querySelectorAll('.chip.sel')).map(function(c){return c.dataset.val;});
+        if (key==='actividad_fisica') renderSportRows();
+        if (key==='digestivo' || key==='alergias') exclusiveNone(g, key);
         saveDraft();
       });
     });
@@ -311,6 +336,45 @@
       if (!already) { dot.classList.add('sel'); grid[food]=dot.dataset.lvl; } else { delete grid[food]; }
       saveDraft();
     });
+  });
+
+  // «Ninguna» excluye al resto y viceversa (digestivo)
+  function exclusiveNone(g, key){
+    var none = 'Ninguna', vals = checks[key]||[];
+    if (vals.length > 1 && vals.indexOf(none) >= 0) {
+      var last = g.querySelector('.chip.sel:last-of-type'); var keepNone = last && last.dataset.val === none;
+      g.querySelectorAll('.chip').forEach(function(c){ c.classList.toggle('sel', keepNone ? c.dataset.val===none : (c.dataset.val!==none && vals.indexOf(c.dataset.val)>=0)); });
+      checks[key] = Array.prototype.slice.call(g.querySelectorAll('.chip.sel')).map(function(c){return c.dataset.val;});
+    }
+  }
+  // Campos condicionales (p. ej. etapa hormonal solo si sexo = mujer)
+  function applyShowIf(){
+    document.querySelectorAll('[data-showif]').forEach(function(c){ var kv=c.dataset.showif.split('='); c.style.display = chips[kv[0]]===kv[1] ? '' : 'none'; });
+  }
+  // Filas por deporte marcado: sesiones/semana, minutos por sesión, intensidad → entrenos_json
+  var sports = {};   // {etiqueta: {sessions, minutes, intensity}}
+  function renderSportRows(){
+    var box = document.getElementById('sport-rows'); if (!box) return;
+    var sel = (checks.actividad_fisica||[]).filter(function(l){ return SPORT_KEYS[l]; });
+    Object.keys(sports).forEach(function(l){ if (sel.indexOf(l)<0) delete sports[l]; });
+    box.innerHTML = sel.map(function(l){
+      var sp = sports[l] = sports[l] || {};
+      return '<div class="sport-row" data-sport="'+esc(l)+'"><div class="sport-name">'+esc(l)+'</div>'+
+        '<div class="sport-grid">'+
+        '<div><input type="number" inputmode="numeric" min="0" max="14" data-sp="sessions" placeholder="—" value="'+esc(sp.sessions||'')+'"><label>sesiones / semana</label></div>'+
+        '<div><input type="number" inputmode="numeric" min="0" max="600" step="5" data-sp="minutes" placeholder="—" value="'+esc(sp.minutes||'')+'"><label>minutos por sesión</label></div>'+
+        '</div><div class="chips">'+Object.keys(INT_LABELS).map(function(v){ return '<button type="button" class="chip'+(sp.intensity===v?' sel':'')+'" data-int="'+v+'">'+INT_LABELS[v]+'</button>'; }).join('')+'</div></div>';
+    }).join('') || '<div class="optional">Marca arriba lo que practicas y te pregunto cuánto.</div>';
+  }
+  document.addEventListener('input', function(e){
+    if (e.target.dataset && e.target.dataset.sp) { var row=e.target.closest('.sport-row'); (sports[row.dataset.sport]=sports[row.dataset.sport]||{})[e.target.dataset.sp]=e.target.value; saveDraft(); }
+  });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-int]'); if (!b) return;
+    var row = b.closest('.sport-row'); var sp = sports[row.dataset.sport] = sports[row.dataset.sport] || {};
+    var was = b.classList.contains('sel'); row.querySelectorAll('[data-int]').forEach(function(c){ c.classList.remove('sel'); });
+    if (!was) { b.classList.add('sel'); sp.intensity = b.dataset.int; } else { delete sp.intensity; }
+    saveDraft();
   });
 
   // ── Wizard ──
@@ -346,10 +410,10 @@
   ['nombre','email'].forEach(function(id){ document.getElementById(id).addEventListener('input', function(e){ e.target.classList.remove('invalid'); }); });
 
   // ── Borrador ──
-  function allInputIds(){ var ids=[]; STEPS.forEach(function(s){ s.fields.forEach(function(f){ if(['text','email','tel','number','textarea','meal','select'].indexOf(f.type)>=0) ids.push(f.id); }); }); return ids; }
+  function allInputIds(){ var ids=[]; STEPS.forEach(function(s){ s.fields.forEach(function(f){ if(['text','email','tel','number','date','textarea','meal','select'].indexOf(f.type)>=0) ids.push(f.id); }); }); return ids; }
   function saveDraft(){
     try {
-      var d = { _chips:chips, _checks:checks, _grid:grid };
+      var d = { _chips:chips, _checks:checks, _grid:grid, _sports:sports };
       allInputIds().forEach(function(id){ var el=document.getElementById(id); if(el && el.value!=='') d[id]=el.value; });
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
     } catch(e){}
@@ -365,6 +429,8 @@
   }
   document.addEventListener('input', function(e){ if(e.target.matches('input,textarea,select')) saveDraft(); });
   loadDraft();
+  try { var dr = JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}'); if (dr._sports) sports = dr._sports; } catch(e){}
+  renderSportRows(); applyShowIf();
   show(0);
 
   // ── Envío ──
@@ -377,6 +443,17 @@
       var lvlName = {}; GRID_LEVELS.forEach(function(l){ lvlName[l[0]]=l[2]; });
       data.preferencias = Object.keys(grid).map(function(f){ return f+': '+lvlName[grid[f]]; }).join(' | ');
     }
+    // v2 (2026-09-24): edad calculada desde la fecha de nacimiento (la hoja sigue teniendo la columna edad)
+    if (data.fecha_nacimiento) {
+      var bd = new Date(data.fecha_nacimiento+'T00:00:00'), now = new Date();
+      var a = now.getFullYear()-bd.getFullYear(); if (now < new Date(now.getFullYear(), bd.getMonth(), bd.getDate())) a--;
+      if (a > 0 && a < 120) data.edad = String(a);
+    }
+    if (chips.sexo !== 'female') delete data.estado_hormonal;
+    var tr = Object.keys(sports).map(function(l){ var sp = sports[l];
+      return { sport: SPORT_KEYS[l]||'other', label: l, sessions: sp.sessions ? +sp.sessions : null, minutes: sp.minutes ? +sp.minutes : null, intensity: sp.intensity || null };
+    }).filter(function(e){ return e.sessions || e.minutes || e.intensity; });
+    if (tr.length) data.entrenos_json = JSON.stringify(tr);
     return data;
   }
 
