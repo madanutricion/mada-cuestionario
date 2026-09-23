@@ -121,9 +121,9 @@
   .sport-row { display: none; padding: 12px 0 4px; border-top: 0.5px solid var(--hairline); margin-top: 10px; }
   .sport-row.on { display: block; }
   .sport-row .name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--label); margin-bottom: 8px; }
-  .sport-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sport-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .sport-grid label { display: block; font-size: 11px; font-weight: 500; color: var(--label-2); text-align: center; margin-top: 5px; letter-spacing: 0.01em; }
-  .sport-grid input { text-align: center; padding: 11px 6px; font-variant-numeric: tabular-nums; font-weight: 500; border-radius: 10px; }
+  .sport-grid input { text-align: center; padding: 11px 4px; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 500; border-radius: 10px; }
   .sport-grid .cell.off { visibility: hidden; }
 
   /* ── Slider ── */
@@ -307,6 +307,7 @@
         <div class="step-title">Tu menú semanal</div>
         <div class="step-desc">Esto nos ayuda a ajustar los platos de las próximas semanas.</div>
 
+        <div class="card slider-block" data-slider="adherencia_0_10" data-emojis="🙈,😬,😐,🙂,🎯" data-min-label="Casi nada" data-max-label="Al 100 %" data-title="¿Cuánto has seguido el plan esta semana?"></div>
         <div class="card">
           <label class="field-label">¿Contento/a con el menú?</label>
           <input type="text" id="satisfaccion_menu" placeholder="Sí, aunque repetiría menos las cenas…">
@@ -338,13 +339,18 @@
         </div>
         <div class="card">
           <label class="field-label">Entrenos de esta semana <span class="optional">· toca lo que hayas hecho</span></label>
-          <div class="field-hint">Totales de la semana: sesiones, horas, kilómetros y cómo de duro ha sido (0 = paseo, 10 = al límite).</div>
+          <div class="field-hint">Totales de la semana: sesiones, horas, kilómetros, cómo de duro ha sido (0 = paseo, 10 = al límite) y, si tu reloj la da, la frecuencia cardíaca media.</div>
           <div class="sport-chips" id="sport-chips"></div>
           <div id="sport-rows"></div>
         </div>
         <div class="card">
           <label class="field-label">¿Ejercicio fuera de lo programado? <span class="optional">· opcional</span></label>
           <input type="text" id="ejercicio_extra" placeholder="Ruta el sábado, pádel el jueves…">
+        </div>
+        <div class="card">
+          <label class="field-label">¿Algo que deba saber para la semana que viene? <span class="optional">· opcional</span></label>
+          <div class="field-hint">Viajes, comidas fuera, celebraciones, cambios de horario o de entrenos… para adaptar el plan antes, no después.</div>
+          <textarea id="proxima_semana" placeholder="Cena de empresa el jueves, fin de semana fuera…"></textarea>
         </div>
         <div class="card">
           <label class="field-label">¿Algo más que quieras contarme? <span class="optional">· opcional</span></label>
@@ -412,7 +418,7 @@
     { key: 'gym',      label: '🏋️ Gimnasio', km: false },
     { key: 'other',    label: '✨ Otro',     km: true }
   ];
-  var SPORT_FIELDS = ['sessions', 'hours', 'km', 'rpe'];
+  var SPORT_FIELDS = ['sessions', 'hours', 'km', 'rpe', 'hr'];
   var SPORT_IDS = [];
   (function buildSports() {
     var chips = document.getElementById('sport-chips');
@@ -430,6 +436,7 @@
         '<div class="cell"><input type="number" inputmode="decimal" min="0" max="60" step="0.5" id="tr_' + sp.key + '_hours" placeholder="—"><label>horas</label></div>' +
         '<div class="cell' + (sp.km ? '' : ' off') + '"><input type="number" inputmode="decimal" min="0" max="2000" step="0.1" id="tr_' + sp.key + '_km" placeholder="—"' + (sp.km ? '' : ' disabled') + '><label>km</label></div>' +
         '<div class="cell"><input type="number" inputmode="numeric" min="0" max="10" step="1" id="tr_' + sp.key + '_rpe" placeholder="—"><label>esfuerzo 0-10</label></div>' +
+        '<div class="cell"><input type="number" inputmode="numeric" min="30" max="240" step="1" id="tr_' + sp.key + '_hr" placeholder="—"><label>FC media</label></div>' +
         '</div>';
       rows.appendChild(row);
       SPORT_FIELDS.forEach(function (f) { SPORT_IDS.push('tr_' + sp.key + '_' + f); });
@@ -449,7 +456,7 @@
       if (!row.classList.contains('on')) return;
       var g = function (f) { var el = document.getElementById('tr_' + sp.key + '_' + f); var v = el ? el.value.replace(',', '.') : ''; return v === '' ? null : +v; };
       var hours = g('hours');
-      var e = { sport: sp.key, sessions: g('sessions'), minutes: hours == null ? null : Math.round(hours * 60), km: sp.km ? g('km') : null, rpe: g('rpe') };
+      var e = { sport: sp.key, sessions: g('sessions'), minutes: hours == null ? null : Math.round(hours * 60), km: sp.km ? g('km') : null, rpe: g('rpe'), hr: g('hr') };
       if (e.sessions || e.minutes || e.km) out.push(e);
     });
     return out;
@@ -529,11 +536,11 @@
 
   // ── Borrador en localStorage ──
   var FIELD_IDS = DAY_KEYS.concat(
-    ['cansancio_0_10','animo_0_10','calidad_sueno_0_10','hidratacion_0_10',
+    ['cansancio_0_10','animo_0_10','calidad_sueno_0_10','hidratacion_0_10','adherencia_0_10',
      'saciedad_0_10','digestiones_0_10','aburrimiento_0_10',
      'horas_sueno','pasos_diarios','causa_cansancio','notas_sueno','hambre_notas',
      'dificultades_plan','molestias_digestivas','satisfaccion_menu','cambios_platos',
-     'platos_favoritos','ejercicio_extra','comentarios']).concat(SPORT_IDS);
+     'platos_favoritos','ejercicio_extra','comentarios','proxima_semana']).concat(SPORT_IDS);
 
   function saveDraft() {
     try {
