@@ -149,7 +149,7 @@
         body = '<div class="rows" id="' + f.id + '-box"></div><button type="button" class="btn-add" data-r-add="' + f.id + '">' + esc(f.addLabel || '+ Añadir') + '</button>';
       } else if (t === 'consent') {
         body = '<label class="consent"><input type="checkbox" id="' + f.id + '"><span>' + esc(f.text) + '</span></label>' +
-          '<details class="legal"><summary>Leer la información de protección de datos</summary><p>' + esc(f.legal) + '</p></details>';
+          (f.legal ? '<details class="legal"><summary>Leer la información de protección de datos</summary><p>' + esc(f.legal) + '</p></details>' : '');
       }
       var inner = t === 'meal' ? '<div class="meal-label">' + esc(f.label) + '</div>' + hint + body : lab + hint + body;
       return '<div class="card" data-fid="' + f.id + '">' + inner + '</div>';
