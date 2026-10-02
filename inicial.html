@@ -12,18 +12,19 @@
 </head>
 <body>
 <!-- MADA · Cuestionario inicial por perfiles (v3, 2026-10-01).
-     inicial.html?perfil=general|deportista  (sin parámetro o desconocido = general).
+     inicial.html?perfil=general|deportista|menor  (sin parámetro o desconocido = general).
+     menor = el general con el día a día adaptado y la autorización de madre, padre o tutor legal.
      Página estática (GitHub Pages) → POST (form:'intake') al doPost del Apps Script →
      pestaña INICIAL (todo viaja en raw_json) → la app crea el cliente tras la revisión.
      Motor y estilos: mada.js / mada.css (compartidos con el cuestionario semanal). -->
 <div class="wrap"><div id="app"></div></div>
-<script src="mada.js?v=20261001"></script>
+<script src="mada.js?v=20261002"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var CONTACT_EMAIL = 'madanutricion@gmail.com';   // confirmado por el usuario el 2026-10-02
 
   // ── Perfil (lo elige el nutricionista al copiar el enlace) ──
-  var KNOWN = ['general', 'deportista'];
+  var KNOWN = ['general', 'deportista', 'menor'];
   var PERFIL = (new URLSearchParams(location.search).get('perfil') || 'general').toLowerCase();
   if (KNOWN.indexOf(PERFIL) < 0) PERFIL = 'general';
 
@@ -40,6 +41,17 @@
     'Conservación: mientras dure el servicio y, después, durante los plazos que exige la normativa sanitaria (como mínimo cinco años). ' +
     'Destinatarios: no se ceden a terceros. Las respuestas se guardan en Google, que actúa como encargado del tratamiento y puede tratarlas fuera de la Unión Europea con las garantías que prevé el RGPD. ' +
     'Derechos: acceso, rectificación, supresión, oposición, limitación y portabilidad escribiendo a ese email. También puedes reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).';
+
+  // Menores de edad: desde los 14 años el consentimiento de protección de datos lo da la propia persona
+  // (art. 7 LOPDGDD); el servicio lo contrata y lo autoriza quien ejerce la patria potestad o la tutela.
+  var LEGAL_MENOR = 'Responsable: Oier Madariaga (MADA Nutrición), ' + CONTACT_EMAIL + '. Finalidad: elaborar y seguir el plan nutricional de la persona menor de edad. ' +
+    'Base legal: la ejecución del servicio que contrata su madre, padre o tutor legal (art. 6.1.b RGPD) y el consentimiento explícito para tratar datos de salud (art. 9.2.a). ' +
+    'A partir de los 14 años ese consentimiento lo da la propia persona menor (art. 7 de la Ley Orgánica 3/2018); por debajo de esa edad lo da su madre, padre o tutor legal. ' +
+    'En todos los casos se pide además la autorización de la madre, el padre o el tutor legal para prestar el servicio. El consentimiento puede retirarse en cualquier momento. ' +
+    'Conservación: mientras dure el servicio y, después, durante los plazos que exige la normativa sanitaria (como mínimo cinco años). ' +
+    'Destinatarios: no se ceden a terceros. Las respuestas se guardan en Google, que actúa como encargado del tratamiento y puede tratarlas fuera de la Unión Europea con las garantías que prevé el RGPD. ' +
+    'Derechos: acceso, rectificación, supresión, oposición, limitación y portabilidad, que pueden ejercer tanto la persona menor como su madre, padre o tutor legal escribiendo a ese email. ' +
+    'También se puede reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).';
 
   // ── Catálogo de pasos ──
   var STEP_DEFS = {
@@ -155,18 +167,52 @@
     ]}
   };
 
+  // ── Variantes de paso del perfil «menor» (mismos ids y valores que el general: la app no distingue) ──
+  function variant(def, o) {
+    var out = { name: def.name, title: o.title || def.title, desc: o.desc || def.desc, fields: [] };
+    def.fields.forEach(function (f) {
+      if ((o.omit || []).indexOf(f.id) >= 0) return;
+      var c = {}, k; for (k in f) c[k] = f[k];
+      var ch = (o.change || {})[f.id]; if (ch) for (k in ch) c[k] = ch[k];
+      out.fields.push(c);
+    });
+    return out;
+  }
+  STEP_DEFS.sobre_ti_menor = variant(STEP_DEFS.sobre_ti, { change: {
+    email: { label: 'Email', hint: 'El tuyo o el de tu madre, padre o tutor.' },
+    estado_hormonal: { label: 'Tu ciclo', opts: ['Ciclo regular', 'Ciclo irregular', 'Anticonceptivos hormonales', 'No tengo la regla', 'Embarazo'] }
+  }});
+  STEP_DEFS.dia_menor = variant(STEP_DEFS.dia, { omit: ['situacion_economica'], change: {
+    trabajo: { label: '¿Qué estudias o a qué te dedicas?', ph: 'Bachillerato, FP, trabajo…' },
+    trabajo_tipo: { label: 'Tu día es sobre todo…', opts: [['Sentado (oficina, coche)', 'Sentado (clase, estudio)'], ['De pie o moviéndome', 'De pie o moviéndome'], ['Esfuerzo físico', 'Esfuerzo físico']] },
+    turnos: { label: 'Tu horario de clases o trabajo' }
+  }});
+  STEP_DEFS.enviar_menor = { name: 'Enviar', title: 'Antes de enviar', desc: 'Para este último paso hace falta tu madre, tu padre o tu tutor legal.', fields: [
+    { id: 'consent_at', label: 'Tu aceptación', type: 'consent', text: 'He leído la información y acepto que se traten mis datos, incluidos los de salud, para elaborar y seguir mi plan nutricional.', legal: LEGAL_MENOR },
+    { id: 'tutor_nombre', label: 'Madre, padre o tutor legal: nombre y apellidos', req: true, type: 'text', ph: 'Nombre y apellidos' },
+    { id: 'tutor_relacion', label: 'Es tu…', type: 'chips', opts: ['Madre', 'Padre', 'Tutor legal'] },
+    { id: 'tutor_telefono', label: 'Su teléfono', req: true, type: 'tel', ph: '600 123 456' },
+    { id: 'tutor_email', label: 'Su email', opt: true, type: 'email', ph: 'correo@ejemplo.com' },
+    { id: 'tutor_consent_at', label: 'Autorización de la madre, el padre o el tutor legal', type: 'consent',
+      text: 'Soy la madre, el padre o el tutor legal de quien rellena este cuestionario. He leído la información de protección de datos, autorizo que reciba el servicio de asesoramiento nutricional y consiento el tratamiento de sus datos, incluidos los de salud.' }
+  ]};
+
   var PROFILES = {
     general: { kicker: 'Primera consulta', greeting: 'Cuéntame sobre ti', meta: 'Cuanto más detalle, mejor tu plan. Se trata todo de forma confidencial.',
       steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'] },
     deportista: { kicker: 'Primera consulta · deportistas', greeting: 'Cuéntame cómo entrenas', meta: 'Unos 15 minutos. Con tus entrenos al detalle, el plan sale ajustado a lo que gastas de verdad.',
-      steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'deporte', 'actividad', 'comer_entreno', 'competiciones', 'descanso', 'enviar'] }
+      steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'deporte', 'actividad', 'comer_entreno', 'competiciones', 'descanso', 'enviar'] },
+    // Mismos pasos y claves que el general; `defs` cambia la definición de tres de ellos
+    menor: { kicker: 'Primera consulta · menores de edad', greeting: 'Cuéntame sobre ti', meta: 'Rellénalo tú. En el último paso hará falta tu madre, tu padre o tu tutor legal un minuto para autorizarlo.',
+      steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'],
+      defs: { sobre_ti: 'sobre_ti_menor', dia: 'dia_menor', enviar: 'enviar_menor' } }
   };
   var P = PROFILES[PERFIL];
 
   var form = MadaForm.mount({
     root: '#app',
     brand: { kicker: P.kicker, greeting: P.greeting, meta: P.meta },
-    steps: P.steps.map(function (k) { var s = STEP_DEFS[k]; return { key: k, name: s.name, title: s.title, desc: s.desc, fields: s.fields }; }),
+    steps: P.steps.map(function (k) { var s = STEP_DEFS[(P.defs || {})[k] || k]; return { key: k, name: s.name, title: s.title, desc: s.desc, fields: s.fields }; }),
     draftKey: 'mada_intake_v3:' + PERFIL,
     // Quien dejó a medias el cuestionario anterior (v2, un solo perfil) lo recupera en el perfil general
     legacyDraftKey: PERFIL === 'general' ? 'mada_intake_v2' : null,
@@ -206,6 +252,13 @@
         }
       }
       if (key === 'enviar' && !api.consent('consent_at')) return 'Marca la casilla de protección de datos para poder enviar el cuestionario.';
+      if (key === 'enviar' && PERFIL === 'menor') {
+        var tn = document.getElementById('tutor_nombre'), tt = document.getElementById('tutor_telefono');
+        var okTn = tn.value.trim().length > 4, okTt = tt.value.replace(/\D/g, '').length >= 9;
+        tn.classList.toggle('invalid', !okTn); tt.classList.toggle('invalid', !okTt);
+        if (!okTn || !okTt) return 'Faltan el nombre y el teléfono de tu madre, padre o tutor legal.';
+        if (!api.consent('tutor_consent_at')) return 'Falta la autorización de tu madre, padre o tutor legal: tiene que marcar su casilla.';
+      }
       return null;
     },
     // La hoja mantiene la columna «edad»: se calcula desde la fecha de nacimiento
