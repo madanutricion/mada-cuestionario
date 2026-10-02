@@ -3,628 +3,94 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cuestionario semanal · MADA Nutrición</title>
-<style>
-  /* ───────────────────────────────────────────────────────────────────────────
-     MADA · Cuestionario semanal — estética Apple Health (tema claro).
-     Fondo gris agrupado de iOS, tarjetas blancas con sombra suave, fuente del
-     sistema (SF), verde del sistema como acento, hairlines, materiales
-     translúcidos y movimiento tipo muelle. Lógica idéntica (IDs, clases,
-     EXEC_URL, JS) a la versión anterior.
-     ─────────────────────────────────────────────────────────────────────────── */
-  :root {
-    color-scheme: light;
-    --bg: #F2F2F7;            /* systemGroupedBackground light */
-    --card: #FFFFFF;
-    --card-2: #FFFFFF;
-    --field: #EFEFF4;         /* campo dentro de tarjeta blanca */
-    --hairline: rgba(60,60,67,0.13);
-    --label: #1C1C1E;
-    --label-2: rgba(60,60,67,0.60);   /* secondaryLabel light */
-    --label-3: rgba(60,60,67,0.32);   /* tertiaryLabel light */
-    --accent: #34C759;        /* verde del sistema (Health) */
-    --accent-dim: #30B94F;    /* arranque del relleno del slider */
-    --accent-strong: #248A3D; /* verde legible para números/valores sobre blanco */
-    --accent-soft: rgba(52,199,89,0.16);
-    --accent-ink: #FFFFFF;    /* texto sobre botón verde */
-    --surface-2: #E4E4EA;     /* pista sin rellenar del slider (usada por JS) */
-    --danger: #D70015;        /* rojo sistema iOS light */
-    --text: var(--label);
-    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
-    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { font-size: 16px; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-                 system-ui, "Segoe UI", Roboto, sans-serif;
-    font-optical-sizing: auto;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type=number] { -moz-appearance: textfield; }
-
-  .wrap {
-    max-width: 500px; margin: 0 auto;
-    padding: calc(env(safe-area-inset-top) + 30px) 20px 140px;
-  }
-
-  /* ── Cabecera: kicker · saludo (large title) · semana · hairline ── */
-  .brand { font-size: 12px; font-weight: 600; letter-spacing: 0.4px; color: var(--label-3); text-transform: uppercase; }
-  .greeting { font-size: 30px; font-weight: 700; letter-spacing: -0.021em; line-height: 1.08; color: var(--label); margin-top: 8px; }
-  .week-meta { font-size: 15px; font-weight: 400; color: var(--label-2); margin-top: 5px; letter-spacing: -0.01em; }
-  .head-rule { border-bottom: 0.5px solid var(--hairline); padding-bottom: 22px; margin-bottom: 24px; }
-
-  /* ── Progreso: capsule fina ── */
-  .progress-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
-  .step-label { font-size: 12px; font-weight: 600; color: var(--label-2); letter-spacing: 0.2px; }
-  .step-count { font-size: 12px; font-weight: 400; color: var(--label-3); font-variant-numeric: tabular-nums; }
-  .progress-track { height: 4px; background: rgba(120,120,128,0.20); border-radius: 999px; overflow: hidden; margin-bottom: 30px; }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.55s var(--ease-spring); }
-
-  /* ── Pasos (transición tipo muelle) ── */
-  .step { display: none; }
-  .step.active { display: block; animation: stepIn 0.5s var(--ease-spring); }
-  @keyframes stepIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
-
-  .step-icon { font-size: 30px; margin-bottom: 12px; line-height: 1; }
-  .step-title { font-size: 22px; font-weight: 700; letter-spacing: -0.019em; color: var(--label); margin-bottom: 6px; }
-  .step-desc { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.45; letter-spacing: -0.01em; margin-bottom: 24px; }
-
-  .card {
-    background: var(--card);
-    border-radius: 18px;
-    padding: 18px 16px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
-  }
-
-  /* ── Campos ── */
-  .field-label { display: block; font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: var(--label); margin-bottom: 12px; }
-  .field-hint { font-size: 13px; font-weight: 400; color: var(--label-3); margin-top: -7px; margin-bottom: 12px; }
-  .optional { color: var(--label-3); font-weight: 400; font-size: 13px; letter-spacing: 0; }
-
-  input[type="text"], input[type="number"], textarea {
-    width: 100%; background: var(--field); border: none;
-    border-radius: 12px; color: var(--label); font-size: 16px; font-weight: 400;
-    padding: 14px 15px; outline: none;
-    transition: box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
-    font-family: inherit; letter-spacing: -0.01em;
-  }
-  input:focus, textarea:focus { background: #FFFFFF; box-shadow: 0 0 0 3.5px var(--accent-soft), inset 0 0 0 1px rgba(60,60,67,0.10); }
-  textarea { resize: vertical; min-height: 88px; line-height: 1.5; }
-  ::placeholder { color: var(--label-3); font-weight: 400; }
-
-  /* ── Peso semanal: fila estilo lista iOS ── */
-  .weight-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 0.5px solid var(--hairline); }
-  .weight-row:first-child { border-top: 0; padding-top: 2px; }
-  .weight-day { width: 104px; flex-shrink: 0; }
-  .weight-day .d { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--label); }
-  .weight-day .f { font-size: 12px; font-weight: 400; color: var(--label-3); margin-top: 1px; }
-  .weight-row input { text-align: center; padding: 11px 10px; font-variant-numeric: tabular-nums; font-weight: 500; border-radius: 10px; }
-  .weight-row .kg { font-size: 13px; font-weight: 400; color: var(--label-3); width: 20px; }
-
-  /* ── Entrenos de la semana: chips por deporte + fila de datos ── */
-  .sport-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
-  .sport-chip {
-    border: none; font-family: inherit; font-size: 15px; font-weight: 500; letter-spacing: -0.01em;
-    padding: 9px 14px; border-radius: 999px; background: var(--field); color: var(--label);
-    transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out), transform 0.2s var(--ease-spring);
-  }
-  .sport-chip:active { transform: scale(0.96); }
-  .sport-chip.on { background: var(--accent); color: var(--accent-ink); }
-  .sport-row { display: none; padding: 12px 0 4px; border-top: 0.5px solid var(--hairline); margin-top: 10px; }
-  .sport-row.on { display: block; }
-  .sport-row .name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--label); margin-bottom: 8px; }
-  .sport-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .sport-grid label { display: block; font-size: 11px; font-weight: 500; color: var(--label-2); text-align: center; margin-top: 5px; letter-spacing: 0.01em; }
-  .sport-grid input { text-align: center; padding: 11px 4px; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 500; border-radius: 10px; }
-  .sport-grid .cell.off { visibility: hidden; }
-
-  /* ── Slider ── */
-  .slider-block { padding: 4px 0 8px; }
-  .slider-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
-  .slider-value {
-    font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent-strong);
-    font-variant-numeric: tabular-nums; min-width: 54px; text-align: right;
-  }
-  .slider-value.unset { color: var(--label-3); font-size: 14px; font-weight: 400; letter-spacing: -0.01em; }
-  .slider-emoji { font-size: 18px; margin-right: 6px; }
-  input[type="range"] {
-    -webkit-appearance: none; appearance: none; width: 100%; height: 36px;
-    background: transparent; margin-top: 4px;
-  }
-  input[type="range"]::-webkit-slider-runnable-track {
-    height: 5px; border-radius: 999px;
-    background: var(--track, var(--surface-2));
-  }
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 27px; height: 27px; border-radius: 50%;
-    background: #fff; border: 0.5px solid rgba(0,0,0,0.04);
-    margin-top: -11px; box-shadow: 0 1px 3px rgba(0,0,0,0.22), 0 4px 10px rgba(0,0,0,0.10);
-    transition: transform 0.12s var(--ease-out);
-  }
-  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
-  input[type="range"]::-moz-range-track { height: 5px; border-radius: 999px; background: var(--track, var(--surface-2)); }
-  input[type="range"]::-moz-range-thumb { width: 25px; height: 25px; border-radius: 50%; background: #fff; border: 0.5px solid rgba(0,0,0,0.04); box-shadow: 0 1px 3px rgba(0,0,0,0.22); }
-  .slider-ends { display: flex; justify-content: space-between; font-size: 12px; font-weight: 400; color: var(--label-3); margin-top: 2px; letter-spacing: -0.01em; }
-
-  /* ── Navegación: barra de material translúcido claro ── */
-  .nav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(255,255,255,0.72);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
-    border-top: 0.5px solid rgba(0,0,0,0.10);
-    padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
-  }
-  .nav-inner { max-width: 500px; margin: 0 auto; display: flex; gap: 10px; }
-  .btn {
-    flex: 1; border: none; border-radius: 14px; font-size: 17px; font-weight: 600;
-    letter-spacing: -0.01em; padding: 15px; cursor: pointer; font-family: inherit;
-    transition: transform 0.13s var(--ease-out), opacity 0.2s var(--ease-out), background 0.2s var(--ease-out);
-  }
-  .btn:active { transform: scale(0.96); }
-  .btn-next { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 3px rgba(52,199,89,0.35); }
-  .btn-next:disabled { opacity: 0.5; box-shadow: none; }
-  .btn-back { background: rgba(118,118,128,0.12); color: var(--label); flex: 0 0 96px; }
-  .btn-back:active { background: rgba(118,118,128,0.20); }
-
-  /* ── Éxito ── */
-  .success { text-align: center; padding: 76px 10px 30px; display: none; }
-  .success.active { display: block; animation: stepIn 0.5s var(--ease-spring); }
-  .check-ring {
-    width: 96px; height: 96px; margin: 0 auto 28px; border-radius: 50%;
-    background: var(--accent-soft); display: flex; align-items: center; justify-content: center;
-    animation: pop 0.62s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes pop { from { transform: scale(0.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .check-ring svg { width: 46px; height: 46px; stroke: var(--accent); stroke-width: 3; fill: none;
-    stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw 0.55s 0.3s forwards var(--ease-out); }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  .success h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--label); margin-bottom: 10px; }
-  .success p { font-size: 15px; font-weight: 400; color: var(--label-2); line-height: 1.55; max-width: 300px; margin: 0 auto; letter-spacing: -0.01em; }
-
-  .error-banner {
-    display: none; background: rgba(255,59,48,0.10); border: 0.5px solid rgba(255,59,48,0.35);
-    color: var(--danger); font-size: 14px; font-weight: 400; border-radius: 12px; padding: 13px 15px; margin-bottom: 16px;
-    line-height: 1.45; letter-spacing: -0.01em;
-  }
-
-  .invalid-link { text-align: center; padding: 96px 20px; }
-  .invalid-link .step-icon { font-size: 42px; }
-
-  .spinner {
-    display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-    border: 2.5px solid rgba(255,255,255,0.45); border-top-color: #fff;
-    animation: spin 0.7s linear infinite; vertical-align: -4px; margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── Accesibilidad: movimiento y transparencia reducidos ── */
-  @media (prefers-reduced-motion: reduce) {
-    .step.active, .success.active { animation: fadeIn 0.25s ease; }
-    .check-ring { animation: fadeIn 0.25s ease; }
-    .check-ring svg { animation: none; stroke-dashoffset: 0; }
-    .progress-fill { transition: width 0.25s ease; }
-    .btn:active, input[type="range"]:active::-webkit-slider-thumb { transform: none; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    .nav { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  }
-</style>
+<meta name="robots" content="noindex">
+<title>Cuestionario semanal · mada nutrición</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mada.css?v=20261001">
 </head>
 <body>
+<!-- MADA · Cuestionario semanal (2026-10-01: mismas preguntas y claves que la versión anterior,
+     sobre el motor común mada.js y con la marca nueva). Enlace: ?t=token&w=lunes&n=nombre.
+     Página estática (GitHub Pages) → POST al doPost del Apps Script → pestaña RESPUESTAS. -->
 <div class="wrap">
-
-  <!-- Enlace sin token (se muestra por JS si falta ?t=) -->
   <div id="invalid" style="display:none">
-    <div class="brand">MADA Nutrición</div>
+    <div class="brand"><span class="wordmark">mada<sup>©</sup></span></div>
     <div class="invalid-link">
-      <div class="step-icon">🔗</div>
-      <div class="step-title">Enlace no válido</div>
+      <h2 class="step-title">Enlace no válido</h2>
       <p class="step-desc" style="margin-top:8px;">Este enlace está incompleto.<br>Pide a tu nutricionista que te lo reenvíe.</p>
     </div>
   </div>
-
-  <!-- Cuestionario (se muestra por JS si hay token) -->
-  <div id="app" style="display:none">
-    <div id="form-area">
-      <div class="head-rule">
-        <div class="brand">MADA Nutrición · Seguimiento semanal</div>
-        <div class="greeting" id="greeting">Hola 👋</div>
-        <div class="week-meta" id="week-label"></div>
-      </div>
-
-      <div class="progress-row">
-        <span class="step-label" id="step-name"></span>
-        <span class="step-count" id="step-count"></span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="progress" style="width:20%"></div></div>
-
-      <div class="error-banner" id="error-banner"></div>
-
-      <!-- PASO 1 · Peso -->
-      <section class="step active" data-name="Peso">
-        <div class="step-icon">⚖️</div>
-        <div class="step-title">Tu peso esta semana</div>
-        <div class="step-desc">Apunta los días que te hayas pesado (en ayunas). Los que no tengas, déjalos en blanco.</div>
-        <div class="card" id="weight-card"></div>
-      </section>
-
-      <!-- PASO 2 · Descanso y energía -->
-      <section class="step" data-name="Descanso y energía">
-        <div class="step-icon">😴</div>
-        <div class="step-title">Descanso y energía</div>
-        <div class="step-desc">¿Cómo te has sentido en general durante la semana?</div>
-
-        <div class="card slider-block" data-slider="cansancio_0_10" data-emojis="⚡,😊,😐,🥱,😵" data-min-label="Con energía" data-max-label="Agotado/a"></div>
-        <div class="card">
-          <label class="field-label">¿A qué crees que se debe? <span class="optional">· opcional</span></label>
-          <input type="text" id="causa_cansancio" placeholder="Trabajo, poco sueño, entrenos…">
-        </div>
-        <div class="card slider-block" data-slider="calidad_sueno_0_10" data-emojis="😫,😕,😐,🙂,😴" data-min-label="Muy mala" data-max-label="Excelente" data-title="Calidad del sueño"></div>
-        <div class="card">
-          <label class="field-label">Horas de sueño <span class="optional">· media por noche</span></label>
-          <input type="number" id="horas_sueno" inputmode="decimal" step="0.5" min="0" max="16" placeholder="7.5">
-        </div>
-        <div class="card slider-block" data-slider="animo_0_10" data-emojis="😞,😕,😐,🙂,😄" data-min-label="Muy bajo" data-max-label="Genial" data-title="Estado de ánimo"></div>
-        <div class="card">
-          <label class="field-label">Notas sobre el descanso <span class="optional">· opcional</span></label>
-          <input type="text" id="notas_sueno" placeholder="Me despierto por la noche, madrugones…">
-        </div>
-      </section>
-
-      <!-- PASO 3 · Alimentación -->
-      <section class="step" data-name="Alimentación">
-        <div class="step-icon">🍽️</div>
-        <div class="step-title">Alimentación y digestión</div>
-        <div class="step-desc">Sobre cómo te ha sentado el plan esta semana.</div>
-
-        <div class="card slider-block" data-slider="saciedad_0_10" data-emojis="😣,😕,😐,🙂,😌" data-min-label="Paso hambre" data-max-label="Muy saciado/a" data-title="Saciedad"></div>
-        <div class="card">
-          <label class="field-label">¿Hambre a alguna hora concreta? <span class="optional">· opcional</span></label>
-          <input type="text" id="hambre_notas" placeholder="Media tarde, antes de cenar…">
-        </div>
-        <div class="card slider-block" data-slider="digestiones_0_10" data-emojis="🤢,😕,😐,🙂,✨" data-min-label="Muy malas" data-max-label="Perfectas" data-title="Digestiones"></div>
-        <div class="card">
-          <label class="field-label">¿Molestias digestivas? <span class="optional">· opcional</span></label>
-          <input type="text" id="molestias_digestivas" placeholder="Hinchazón, acidez, gases…">
-        </div>
-        <div class="card slider-block" data-slider="hidratacion_0_10" data-emojis="🏜️,😕,😐,🙂,💧" data-min-label="Muy poca agua" data-max-label="Muy bien" data-title="Hidratación"></div>
-      </section>
-
-      <!-- PASO 4 · Tu plan -->
-      <section class="step" data-name="Tu plan">
-        <div class="step-icon">📋</div>
-        <div class="step-title">Tu menú semanal</div>
-        <div class="step-desc">Esto nos ayuda a ajustar los platos de las próximas semanas.</div>
-
-        <div class="card slider-block" data-slider="adherencia_0_10" data-emojis="🙈,😬,😐,🙂,🎯" data-min-label="Casi nada" data-max-label="Al 100 %" data-title="¿Cuánto has seguido el plan esta semana?"></div>
-        <div class="card">
-          <label class="field-label">¿Contento/a con el menú?</label>
-          <input type="text" id="satisfaccion_menu" placeholder="Sí, aunque repetiría menos las cenas…">
-        </div>
-        <div class="card slider-block" data-slider="aburrimiento_0_10" data-emojis="🤩,🙂,😐,🥱,😪" data-min-label="Para nada" data-max-label="Mucho" data-title="¿Te aburre el menú?"></div>
-        <div class="card">
-          <label class="field-label">¿Dificultades para seguir el plan? <span class="optional">· opcional</span></label>
-          <textarea id="dificultades_plan" placeholder="Comidas fuera, falta de tiempo para cocinar…"></textarea>
-        </div>
-        <div class="card">
-          <label class="field-label">¿Cambiarías algún plato? <span class="optional">· opcional</span></label>
-          <input type="text" id="cambios_platos" placeholder="El salmón del martes por otro pescado…">
-        </div>
-        <div class="card">
-          <label class="field-label">¿Platos favoritos de la semana? <span class="optional">· opcional</span></label>
-          <input type="text" id="platos_favoritos" placeholder="El curry de garbanzos 😍">
-        </div>
-      </section>
-
-      <!-- PASO 5 · Actividad -->
-      <section class="step" data-name="Actividad">
-        <div class="step-icon">🏃</div>
-        <div class="step-title">Actividad y último apunte</div>
-        <div class="step-desc">Ya casi está. Un par de datos más y terminamos.</div>
-
-        <div class="card">
-          <label class="field-label">Pasos diarios <span class="optional">· media, según tu reloj o móvil</span></label>
-          <input type="number" id="pasos_diarios" inputmode="numeric" min="0" max="80000" step="100" placeholder="10000">
-        </div>
-        <div class="card">
-          <label class="field-label">Entrenos de esta semana <span class="optional">· toca lo que hayas hecho</span></label>
-          <div class="field-hint">Totales de la semana: sesiones, horas, kilómetros, cómo de duro ha sido (0 = paseo, 10 = al límite) y, si tu reloj la da, la frecuencia cardíaca media.</div>
-          <div class="sport-chips" id="sport-chips"></div>
-          <div id="sport-rows"></div>
-        </div>
-        <div class="card">
-          <label class="field-label">¿Ejercicio fuera de lo programado? <span class="optional">· opcional</span></label>
-          <input type="text" id="ejercicio_extra" placeholder="Ruta el sábado, pádel el jueves…">
-        </div>
-        <div class="card">
-          <label class="field-label">¿Algo que deba saber para la semana que viene? <span class="optional">· opcional</span></label>
-          <div class="field-hint">Viajes, comidas fuera, celebraciones, cambios de horario o de entrenos… para adaptar el plan antes, no después.</div>
-          <textarea id="proxima_semana" placeholder="Cena de empresa el jueves, fin de semana fuera…"></textarea>
-        </div>
-        <div class="card">
-          <label class="field-label">¿Algo más que quieras contarme? <span class="optional">· opcional</span></label>
-          <textarea id="comentarios" placeholder="Dudas, sensaciones, lo que sea…"></textarea>
-        </div>
-      </section>
-    </div>
-
-    <!-- Éxito -->
-    <div class="success" id="success">
-      <div class="check-ring">
-        <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>
-      </div>
-      <h2 id="success-title">¡Enviado!</h2>
-      <p>Tus respuestas ya están con tu nutricionista.<br>¡Sigue así! 💪</p>
-    </div>
-
-    <div class="nav" id="nav">
-      <div class="nav-inner">
-        <button type="button" class="btn btn-back" id="btn-back" style="visibility:hidden">Atrás</button>
-        <button type="button" class="btn btn-next" id="btn-next">Continuar</button>
-      </div>
-    </div>
-  </div>
-
+  <div id="app" style="display:none"></div>
 </div>
-
+<script src="mada.js?v=20261001"></script>
 <script>
-  // ── Endpoint de guardado: doPost del Apps Script (misma hoja de respuestas) ──
-  // Si algún día vuelves a desplegar el Apps Script con URL nueva, actualiza SOLO
-  // esta constante (y repega el doPost). El resto no cambia.
+  // Si algún día cambia la URL /exec del Apps Script, se actualiza SOLO esta constante.
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
 
-  // ── Parámetros del enlace: ?t=token&w=lunes&n=nombre ──
   var Q = new URLSearchParams(location.search);
   var TOKEN = (Q.get('t') || '').trim();
   var CLIENT_NAME = (Q.get('n') || '').trim();
-
-  function mondayOf(d) { var day = (d.getDay() + 6) % 7; var m = new Date(d); m.setDate(d.getDate() - day); m.setHours(12,0,0,0); return m; }
-  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function mondayOf(d) { var day = (d.getDay() + 6) % 7; var m = new Date(d); m.setDate(d.getDate() - day); m.setHours(12, 0, 0, 0); return m; }
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   var WEEK_START = (Q.get('w') || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(WEEK_START)) WEEK_START = ymd(mondayOf(new Date()));
+  var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-  // ── Sin token → pantalla de enlace no válido ──
   if (!TOKEN) {
     document.getElementById('invalid').style.display = 'block';
   } else {
     document.getElementById('app').style.display = 'block';
-    initForm();
-  }
+    var ws = new Date(WEEK_START + 'T12:00:00'), we = new Date(ws); we.setDate(ws.getDate() + 6);
+    var opt = function (id, label, ph) { return { id: id, label: label, opt: true, type: 'text', ph: ph }; };
 
-  function initForm() {
-  var DRAFT_KEY = 'mada_q_' + TOKEN + '_' + WEEK_START;
-
-  var SLIDER_TITLES = { cansancio_0_10: 'Nivel de cansancio' };
-  var DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-  var DAY_KEYS = ['peso_lunes','peso_martes','peso_miercoles','peso_jueves','peso_viernes','peso_sabado','peso_domingo'];
-  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-
-  // ── Entrenos de la semana ──
-  var SPORTS = [
-    { key: 'running',  label: '🏃 Carrera',  km: true },
-    { key: 'cycling',  label: '🚴 Bici',     km: true },
-    { key: 'swimming', label: '🏊 Natación', km: true },
-    { key: 'gym',      label: '🏋️ Gimnasio', km: false },
-    { key: 'other',    label: '✨ Otro',     km: true }
-  ];
-  var SPORT_FIELDS = ['sessions', 'hours', 'km', 'rpe', 'hr'];
-  var SPORT_IDS = [];
-  (function buildSports() {
-    var chips = document.getElementById('sport-chips');
-    var rows = document.getElementById('sport-rows');
-    SPORTS.forEach(function (sp) {
-      var chip = document.createElement('button');
-      chip.type = 'button'; chip.className = 'sport-chip'; chip.textContent = sp.label;
-      chip.dataset.sport = sp.key;
-      chip.addEventListener('click', function () { toggleSport(sp.key, !chip.classList.contains('on'), true); saveDraft(); });
-      chips.appendChild(chip);
-      var row = document.createElement('div');
-      row.className = 'sport-row'; row.id = 'sport-row-' + sp.key;
-      row.innerHTML = '<div class="name">' + sp.label + '</div><div class="sport-grid">' +
-        '<div class="cell"><input type="number" inputmode="numeric" min="0" max="14" step="1" id="tr_' + sp.key + '_sessions" placeholder="—"><label>sesiones</label></div>' +
-        '<div class="cell"><input type="number" inputmode="decimal" min="0" max="60" step="0.5" id="tr_' + sp.key + '_hours" placeholder="—"><label>horas</label></div>' +
-        '<div class="cell' + (sp.km ? '' : ' off') + '"><input type="number" inputmode="decimal" min="0" max="2000" step="0.1" id="tr_' + sp.key + '_km" placeholder="—"' + (sp.km ? '' : ' disabled') + '><label>km</label></div>' +
-        '<div class="cell"><input type="number" inputmode="numeric" min="0" max="10" step="1" id="tr_' + sp.key + '_rpe" placeholder="—"><label>esfuerzo 0-10</label></div>' +
-        '<div class="cell"><input type="number" inputmode="numeric" min="30" max="240" step="1" id="tr_' + sp.key + '_hr" placeholder="—"><label>FC media</label></div>' +
-        '</div>';
-      rows.appendChild(row);
-      SPORT_FIELDS.forEach(function (f) { SPORT_IDS.push('tr_' + sp.key + '_' + f); });
+    MadaForm.mount({
+      root: '#app',
+      brand: { kicker: 'Seguimiento semanal', greeting: CLIENT_NAME ? 'Hola, ' + CLIENT_NAME : 'Hola',
+               meta: 'Semana del ' + ws.getDate() + ' de ' + MESES[ws.getMonth()] + ' al ' + we.getDate() + ' de ' + MESES[we.getMonth()] },
+      draftKey: 'mada_q_' + TOKEN + '_' + WEEK_START,
+      execUrl: EXEC_URL,
+      base: { token: TOKEN, week_start: WEEK_START },
+      numeric: true,
+      steps: [
+        { key: 'peso', name: 'Peso', title: 'Tu peso esta semana', desc: 'Apunta los días que te hayas pesado (en ayunas). Los que no tengas, déjalos en blanco.', fields: [
+          { id: 'pesos', type: 'weights', weekStart: WEEK_START }
+        ]},
+        { key: 'descanso', name: 'Descanso y energía', title: 'Descanso y energía', desc: '¿Cómo te has sentido en general durante la semana?', fields: [
+          { id: 'cansancio_0_10', type: 'slider', label: 'Nivel de cansancio', emojis: ['⚡', '😊', '😐', '🥱', '😵'], minLabel: 'Con energía', maxLabel: 'Agotado/a' },
+          opt('causa_cansancio', '¿A qué crees que se debe?', 'Trabajo, poco sueño, entrenos…'),
+          { id: 'calidad_sueno_0_10', type: 'slider', label: 'Calidad del sueño', emojis: ['😫', '😕', '😐', '🙂', '😴'], minLabel: 'Muy mala', maxLabel: 'Excelente' },
+          { id: 'horas_sueno', label: 'Horas de sueño', hint: 'Media por noche.', type: 'number', ph: '7.5', min: 0, max: 16, step: 0.5 },
+          { id: 'animo_0_10', type: 'slider', label: 'Estado de ánimo', emojis: ['😞', '😕', '😐', '🙂', '😄'], minLabel: 'Muy bajo', maxLabel: 'Genial' },
+          opt('notas_sueno', 'Notas sobre el descanso', 'Me despierto por la noche, madrugones…')
+        ]},
+        { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación y digestión', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [
+          { id: 'saciedad_0_10', type: 'slider', label: 'Saciedad', emojis: ['😣', '😕', '😐', '🙂', '😌'], minLabel: 'Paso hambre', maxLabel: 'Muy saciado/a' },
+          opt('hambre_notas', '¿Hambre a alguna hora concreta?', 'Media tarde, antes de cenar…'),
+          { id: 'digestiones_0_10', type: 'slider', label: 'Digestiones', emojis: ['🤢', '😕', '😐', '🙂', '✨'], minLabel: 'Muy malas', maxLabel: 'Perfectas' },
+          opt('molestias_digestivas', '¿Molestias digestivas?', 'Hinchazón, acidez, gases…'),
+          { id: 'hidratacion_0_10', type: 'slider', label: 'Hidratación', emojis: ['🏜️', '😕', '😐', '🙂', '💧'], minLabel: 'Muy poca agua', maxLabel: 'Muy bien' }
+        ]},
+        { key: 'plan', name: 'Tu plan', title: 'Tu menú semanal', desc: 'Esto nos ayuda a ajustar los platos de las próximas semanas.', fields: [
+          { id: 'adherencia_0_10', type: 'slider', label: '¿Cuánto has seguido el plan esta semana?', emojis: ['🙈', '😬', '😐', '🙂', '🎯'], minLabel: 'Casi nada', maxLabel: 'Al 100 %' },
+          { id: 'satisfaccion_menu', label: '¿Contento/a con el menú?', type: 'text', ph: 'Sí, aunque repetiría menos las cenas…' },
+          { id: 'aburrimiento_0_10', type: 'slider', label: '¿Te aburre el menú?', emojis: ['🤩', '🙂', '😐', '🥱', '😪'], minLabel: 'Para nada', maxLabel: 'Mucho' },
+          { id: 'dificultades_plan', label: '¿Dificultades para seguir el plan?', opt: true, type: 'textarea', ph: 'Comidas fuera, falta de tiempo para cocinar…' },
+          opt('cambios_platos', '¿Cambiarías algún plato?', 'El salmón del martes por otro pescado…'),
+          opt('platos_favoritos', '¿Platos favoritos de la semana?', 'El curry de garbanzos')
+        ]},
+        { key: 'actividad', name: 'Actividad', title: 'Actividad y último apunte', desc: 'Ya casi está. Un par de datos más y terminamos.', fields: [
+          { id: 'pasos_diarios', label: 'Pasos diarios', hint: 'Media, según tu reloj o móvil.', opt: true, type: 'number', ph: '10000', int: true, min: 0, max: 80000, step: 100 },
+          { id: 'entrenos_json', label: 'Entrenos de esta semana', hint: 'Toca lo que hayas hecho. Totales de la semana: sesiones, horas, kilómetros, cómo de duro ha sido (0 = paseo, 10 = al límite) y, si tu reloj la da, la frecuencia cardíaca media.', opt: true, type: 'sport_totals' },
+          opt('ejercicio_extra', '¿Ejercicio fuera de lo programado?', 'Ruta el sábado, pádel el jueves…'),
+          { id: 'proxima_semana', label: '¿Algo que deba saber para la semana que viene?', hint: 'Viajes, comidas fuera, celebraciones, cambios de horario o de entrenos… para adaptar el plan antes, no después.', opt: true, type: 'textarea', ph: 'Cena de empresa el jueves, fin de semana fuera…' },
+          { id: 'comentarios', label: '¿Algo más que quieras contarme?', opt: true, type: 'textarea', ph: 'Dudas, sensaciones, lo que sea…' }
+        ]}
+      ],
+      success: { title: '¡Enviado!', text: 'Tus respuestas ya están con tu nutricionista. ¡Sigue así!',
+        titleFor: function () { return CLIENT_NAME ? '¡Listo, ' + CLIENT_NAME + '!' : ''; } }
     });
-  })();
-  function toggleSport(key, on, focus) {
-    var chip = document.querySelector('.sport-chip[data-sport="' + key + '"]');
-    var row = document.getElementById('sport-row-' + key);
-    chip.classList.toggle('on', on); row.classList.toggle('on', on);
-    if (!on) SPORT_FIELDS.forEach(function (f) { var el = document.getElementById('tr_' + key + '_' + f); if (el) el.value = ''; });
-    else if (focus) { var first = document.getElementById('tr_' + key + '_sessions'); if (first) first.focus(); }
-  }
-  function collectTrainings() {
-    var out = [];
-    SPORTS.forEach(function (sp) {
-      var row = document.getElementById('sport-row-' + sp.key);
-      if (!row.classList.contains('on')) return;
-      var g = function (f) { var el = document.getElementById('tr_' + sp.key + '_' + f); var v = el ? el.value.replace(',', '.') : ''; return v === '' ? null : +v; };
-      var hours = g('hours');
-      var e = { sport: sp.key, sessions: g('sessions'), minutes: hours == null ? null : Math.round(hours * 60), km: sp.km ? g('km') : null, rpe: g('rpe'), hr: g('hr') };
-      if (e.sessions || e.minutes || e.km) out.push(e);
-    });
-    return out;
-  }
-
-  // ── Saludo + semana ──
-  if (CLIENT_NAME) document.getElementById('greeting').textContent = 'Hola, ' + CLIENT_NAME + ' 👋';
-  var ws = new Date(WEEK_START + 'T12:00:00');
-  var we = new Date(ws); we.setDate(ws.getDate() + 6);
-  document.getElementById('week-label').textContent =
-    'Semana del ' + ws.getDate() + ' de ' + MESES[ws.getMonth()] +
-    ' al ' + we.getDate() + ' de ' + MESES[we.getMonth()];
-
-  // ── Inputs de peso con fecha real ──
-  var wc = document.getElementById('weight-card');
-  DAYS.forEach(function (d, i) {
-    var dt = new Date(ws); dt.setDate(ws.getDate() + i);
-    var row = document.createElement('div');
-    row.className = 'weight-row';
-    row.innerHTML =
-      '<div class="weight-day"><div class="d">' + d + '</div>' +
-      '<div class="f">' + dt.getDate() + ' ' + MESES[dt.getMonth()] + '</div></div>' +
-      '<input type="number" inputmode="decimal" step="0.05" min="30" max="250" ' +
-      'id="' + DAY_KEYS[i] + '" placeholder="—">' +
-      '<span class="kg">kg</span>';
-    wc.appendChild(row);
-  });
-
-  // ── Sliders 0-10 (empiezan sin valor; primer toque fija) ──
-  document.querySelectorAll('[data-slider]').forEach(function (block) {
-    var id = block.dataset.slider;
-    var title = block.dataset.title || SLIDER_TITLES[id] || id;
-    var emojis = block.dataset.emojis.split(',');
-    block.innerHTML =
-      '<div class="slider-head"><label class="field-label" style="margin-bottom:0">' + title +
-      '</label><span class="slider-value unset" id="' + id + '-val">toca para valorar</span></div>' +
-      '<input type="range" min="0" max="10" step="1" value="5" id="' + id + '" data-set="0">' +
-      '<div class="slider-ends"><span>' + block.dataset.minLabel + '</span><span>' +
-      block.dataset.maxLabel + '</span></div>';
-    var input = block.querySelector('input');
-    var val = block.querySelector('.slider-value');
-    function paint() {
-      var v = +input.value;
-      var pct = v * 10;
-      input.style.setProperty('--track',
-        'linear-gradient(90deg, var(--accent-dim) 0%, var(--accent) ' + pct + '%, var(--surface-2) ' + pct + '%)');
-      var emoji = emojis[Math.min(emojis.length - 1, Math.floor(v / (10.01 / emojis.length)))];
-      val.innerHTML = '<span class="slider-emoji">' + emoji + '</span>' + v;
-      val.classList.remove('unset');
-    }
-    input.addEventListener('input', function () { input.dataset.set = '1'; paint(); saveDraft(); });
-    input.paintIfSet = function () { if (input.dataset.set === '1') paint(); };
-  });
-
-  // ── Wizard ──
-  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
-  var current = 0;
-  var btnNext = document.getElementById('btn-next');
-  var btnBack = document.getElementById('btn-back');
-
-  function show(i) {
-    steps.forEach(function (s, j) { s.classList.toggle('active', i === j); });
-    current = i;
-    document.getElementById('progress').style.width = ((i + 1) / steps.length * 100) + '%';
-    document.getElementById('step-name').textContent = steps[i].dataset.name;
-    document.getElementById('step-count').textContent = 'Paso ' + (i + 1) + ' de ' + steps.length;
-    btnBack.style.visibility = i === 0 ? 'hidden' : 'visible';
-    btnNext.textContent = i === steps.length - 1 ? 'Enviar ✓' : 'Continuar';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  btnBack.addEventListener('click', function () { if (current > 0) show(current - 1); });
-  btnNext.addEventListener('click', function () {
-    if (current < steps.length - 1) { show(current + 1); saveDraft(); }
-    else submit();
-  });
-
-  // ── Borrador en localStorage ──
-  var FIELD_IDS = DAY_KEYS.concat(
-    ['cansancio_0_10','animo_0_10','calidad_sueno_0_10','hidratacion_0_10','adherencia_0_10',
-     'saciedad_0_10','digestiones_0_10','aburrimiento_0_10',
-     'horas_sueno','pasos_diarios','causa_cansancio','notas_sueno','hambre_notas',
-     'dificultades_plan','molestias_digestivas','satisfaccion_menu','cambios_platos',
-     'platos_favoritos','ejercicio_extra','comentarios','proxima_semana']).concat(SPORT_IDS);
-
-  function saveDraft() {
-    try {
-      var d = {};
-      FIELD_IDS.forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        if (el.type === 'range') { if (el.dataset.set === '1') d[id] = el.value; }
-        else if (el.value !== '') d[id] = el.value;
-      });
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-    } catch (e) {}
-  }
-  function loadDraft() {
-    try {
-      var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}');
-      Object.keys(d).forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.value = d[id];
-        if (el.type === 'range') { el.dataset.set = '1'; el.paintIfSet(); }
-        if (id.indexOf('tr_') === 0 && d[id] !== '') toggleSport(id.split('_')[1], true);
-      });
-    } catch (e) {}
-  }
-  document.addEventListener('input', function (e) {
-    if (e.target.matches('input,textarea')) saveDraft();
-  });
-  loadDraft();
-  show(0);
-
-  // ── Envío ──
-  function collect() {
-    var data = { token: TOKEN, week_start: WEEK_START };
-    FIELD_IDS.forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      if (el.type === 'range') {
-        if (el.dataset.set === '1') data[id] = +el.value;
-      } else if (el.type === 'number') {
-        if (el.value !== '') data[id] = +el.value.replace(',', '.');
-      } else if (el.value.trim() !== '') {
-        data[id] = el.value.trim();
-      }
-    });
-    var trainings = collectTrainings();
-    if (trainings.length) data.entrenos_json = JSON.stringify(trainings);
-    return data;
-  }
-
-  function submit() {
-    var banner = document.getElementById('error-banner');
-    banner.style.display = 'none';
-    btnNext.disabled = true;
-    btnNext.innerHTML = '<span class="spinner"></span>Enviando…';
-    // POST en segundo plano al doPost del Apps Script. Usamos 'no-cors' +
-    // credentials 'omit': la petición NO lleva la sesión de Google del cliente,
-    // así que Apps Script la ejecuta como el dueño (nada de bug multi-cuenta).
-    // La respuesta es opaca (no legible), pero el doPost escribe igualmente.
-    fetch(EXEC_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      credentials: 'omit',
-      redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(collect())
-    })
-      .then(function () {
-        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
-        document.getElementById('form-area').style.display = 'none';
-        document.getElementById('nav').style.display = 'none';
-        if (CLIENT_NAME) document.getElementById('success-title').textContent = '¡Listo, ' + CLIENT_NAME + '!';
-        document.getElementById('success').classList.add('active');
-        window.scrollTo(0, 0);
-      })
-      .catch(function (err) {
-        btnNext.disabled = false;
-        btnNext.textContent = 'Reintentar envío';
-        banner.textContent = 'No se pudo enviar (' + ((err && err.message) || 'sin conexión') +
-          '). Tus respuestas siguen guardadas en este dispositivo: prueba otra vez.';
-        banner.style.display = 'block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-  }
   }
 </script>
 </body>
