@@ -77,11 +77,34 @@
     }
 
     // ── HTML de cada campo ──
-    function chipsHTML(attr, id, opts, selected) {
-      return '<div class="chips" ' + attr + '="' + esc(id) + '">' + opts.map(function (o) {
-        var v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : o;
+    // Dibujos de la escala de Bristol (formas abstractas, color del texto)
+    function svg(body) { return '<svg viewBox="0 0 64 24" aria-hidden="true" focusable="false">' + body + '</svg>'; }
+    function dots(list, o) { return list.map(function (c) { return '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + c[2] + '" fill="currentColor"' + (o ? ' opacity="' + o + '"' : '') + '/>'; }).join(''); }
+    var ICONS = {
+      b1: svg(dots([[8, 13, 4.2], [20, 8, 4.2], [31, 15, 4.2], [43, 9, 4.2], [55, 14, 4.2]])),
+      b2: svg(dots([[13, 12, 6.6], [22, 13, 6.6], [31, 11, 6.6], [40, 13, 6.6], [50, 12, 6.6]])),
+      // las grietas se recortan con una máscara: quedan transparentes sobre cualquier fondo (también el del chip marcado)
+      b3: svg('<mask id="mada-b3"><rect width="64" height="24" fill="#fff"/><path d="M16 5.5l2.2 4M27 5.5l-1.6 3.4M37 5.5l2.2 4M48 5.5l-1.6 3.4M22 18.5l1.6-3.2M43 18.5l-1.6-3.2" stroke="#000" stroke-width="1.3" stroke-linecap="round" fill="none"/></mask>' +
+              '<rect x="6" y="6" width="52" height="12" rx="6" fill="currentColor" mask="url(#mada-b3)"/>'),
+      b4: svg('<path d="M9 15C21 6 41 19 55 9" stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none"/>'),
+      b5: svg('<ellipse cx="13" cy="13" rx="7.5" ry="5.2" fill="currentColor"/><ellipse cx="32" cy="10" rx="7.5" ry="5.2" fill="currentColor"/><ellipse cx="51" cy="13" rx="7.5" ry="5.2" fill="currentColor"/>'),
+      b6: svg(dots([[10, 13, 5], [15, 9.5, 3.8], [17, 15.5, 3.4], [6.5, 8.5, 2.4], [31, 11, 5], [36.5, 14.5, 4.2], [27.5, 15.5, 3], [38, 8.5, 2.4], [51, 12, 5], [56.5, 15.5, 3.4], [46.5, 15.5, 3], [55.5, 7.5, 2.4]], 0.72)),
+      b7: svg('<path d="M5 15C5 9 16 11 22 8C30 4 38 9 44 7C52 5 61 10 59 15C58 20 46 19 38 20C27 21 6 21 5 15Z" fill="currentColor" opacity="0.5"/>')
+    };
+
+    // Opción = 'texto' | [valor, etiqueta] | [valor, etiqueta, subtítulo, dibujo]. `f.layout`: 'rows' (una fila por
+    // opción, con dibujo de ICONS) o 'grid3' (rejilla de tres columnas con cabecera `f.head`; la opción `f.none` va a lo ancho).
+    function chipsHTML(attr, id, opts, selected, f) {
+      var layout = f && f.layout ? f.layout : '';
+      var head = layout === 'grid3' && f.head ? '<div class="chips-head">' + f.head.map(function (h) { return '<span>' + esc(h) + '</span>'; }).join('') + '</div>' : '';
+      return head + '<div class="chips' + (layout ? ' is-' + layout : '') + '" ' + attr + '="' + esc(id) + '">' + opts.map(function (o) {
+        var arr = Array.isArray(o), v = arr ? o[0] : o, l = arr ? o[1] : o, sub = arr ? o[2] : '', ico = arr ? ICONS[o[3]] : '';
         var on = Array.isArray(selected) ? selected.indexOf(v) >= 0 : selected === v;
-        return '<button type="button" class="chip' + (on ? ' sel' : '') + '" data-val="' + esc(v) + '">' + esc(l) + '</button>';
+        var inner = !layout ? esc(l) :
+          (ico ? '<span class="chip-ico">' + ico + '</span>' : '') +
+          '<span class="chip-text"><span class="chip-main">' + esc(l) + '</span>' + (sub ? '<span class="chip-sub">' + esc(sub) + '</span>' : '') + '</span>';
+        var wide = layout === 'grid3' && f.none === v ? ' is-wide' : '';
+        return '<button type="button" class="chip' + (on ? ' sel' : '') + wide + '" data-val="' + esc(v) + '">' + inner + '</button>';
       }).join('') + '</div>';
     }
 
@@ -106,9 +129,9 @@
         for (var n = f.min; n <= f.max; n++) o += '<option value="' + n + '">' + n + (n === f.max ? '+' : '') + '</option>';
         body = '<select id="' + f.id + '">' + o + '</select>';
       } else if (t === 'chips') {
-        body = chipsHTML('data-chip', f.id, f.opts, st.chips[f.id]);
+        body = chipsHTML('data-chip', f.id, f.opts, st.chips[f.id], f);
       } else if (t === 'checks') {
-        body = chipsHTML('data-checks', f.id, f.opts, st.checks[f.id] || []);
+        body = chipsHTML('data-checks', f.id, f.opts, st.checks[f.id] || [], f);
       } else if (t === 'grid') {
         body = '<div class="grid-legend">' + f.levels.map(function (l) { return l[1] + ' ' + l[2]; }).join(' · ') + '</div>' +
           f.foods.map(function (food) {
