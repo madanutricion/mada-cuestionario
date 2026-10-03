@@ -463,7 +463,7 @@
         st.rows[id][+item.dataset.rid][el.dataset.rCol] = el.value; return saveDraft();
       }
       if (el.classList.contains('invalid')) el.classList.remove('invalid');
-      saveDraft();
+      applyShowIf(); saveDraft();
     });
     root.addEventListener('change', function (e) {
       var el = e.target;
