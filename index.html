@@ -34,8 +34,17 @@
   var CLIENT_NAME = (Q.get('n') || '').trim();
   function mondayOf(d) { var day = (d.getDay() + 6) % 7; var m = new Date(d); m.setDate(d.getDate() - day); m.setHours(12, 0, 0, 0); return m; }
   function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  // El cuestionario repasa la semana que acaba de terminar: se manda el domingo y pregunta por la que
+  // termina ese día; de lunes a sábado sigue siendo esa. Un enlace cuya semana aún no ha terminado
+  // (los anteriores al 2026-10-03 llevaban la que empezaba al día siguiente) repasa la anterior.
+  function reportedWeek(today) { var m = mondayOf(today); if (today.getDay() !== 0) m.setDate(m.getDate() - 7); return m; }
   var WEEK_START = (Q.get('w') || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(WEEK_START)) WEEK_START = ymd(mondayOf(new Date()));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(WEEK_START)) WEEK_START = ymd(reportedWeek(new Date()));
+  else {
+    var wk = new Date(WEEK_START + 'T12:00:00'), wkEnd = new Date(wk), noon = new Date();
+    wkEnd.setDate(wk.getDate() + 6); noon.setHours(12, 0, 0, 0);
+    if (noon < wkEnd) { wk.setDate(wk.getDate() - 7); WEEK_START = ymd(wk); }
+  }
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   // Variante del semanal (&p=): '' = general. Vista previa para el nutricionista: &preview=1 (no envía nada).
   var PERFIL = (Q.get('p') || '').trim().toLowerCase();
