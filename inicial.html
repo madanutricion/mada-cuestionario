@@ -12,20 +12,21 @@
 </head>
 <body>
 <!-- MADA · Cuestionario inicial por perfiles (v3, 2026-10-01).
-     inicial.html?perfil=general|deportista|menor|digestivo  (sin parámetro o desconocido = general).
+     inicial.html?perfil=general|deportista|menor|digestivo|tca  (sin parámetro o desconocido = general).
+     tca = sin peso ni altura: motivo, equipo de tratamiento, conductas con su frecuencia, señales físicas y, si es menor, tutor.
      digestivo = el general más cinco pasos de historial digestivo (síntomas, dolor por zonas, heces, señales, alimentos).
      menor = el general con el día a día adaptado y la autorización de madre, padre o tutor legal.
      Página estática (GitHub Pages) → POST (form:'intake') al doPost del Apps Script →
      pestaña INICIAL (todo viaja en raw_json) → la app crea el cliente tras la revisión.
      Motor y estilos: mada.js / mada.css (compartidos con el cuestionario semanal). -->
 <div class="wrap"><div id="app"></div></div>
-<script src="mada.js?v=2026100302"></script>
+<script src="mada.js?v=2026100303"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var CONTACT_EMAIL = 'madanutricion@gmail.com';   // confirmado por el usuario el 2026-10-02
 
   // ── Perfil (lo elige el nutricionista al copiar el enlace) ──
-  var KNOWN = ['general', 'deportista', 'menor', 'digestivo'];
+  var KNOWN = ['general', 'deportista', 'menor', 'digestivo', 'tca'];
   var PERFIL = (new URLSearchParams(location.search).get('perfil') || 'general').toLowerCase();
   if (KNOWN.indexOf(PERFIL) < 0) PERFIL = 'general';
 
@@ -270,6 +271,104 @@
     { id: 'dig_libre', label: '¿Algo más que quieras contarme?', hint: 'Cómo estás ahora, qué has probado ya, lo que creas importante y no te haya preguntado.', opt: true, type: 'textarea', ph: 'Lo que quieras' }
   ]};
 
+  // ── Perfil «tca» (trastornos de la conducta alimentaria). NO pregunta peso, altura ni peso objetivo. ──
+  // Contenido según la valoración inicial que piden las guías (APA 2023; NICE NG69; GPC del SNS 2009): conductas de
+  // restricción, pérdida de control y compensación con su frecuencia, alimentos eliminados, tiempo ocupado por la
+  // preocupación, tratamientos previos, antecedentes familiares, señales físicas y regla. El historial de peso que
+  // también piden se recoge en consulta, no aquí. NICE: el consejo dietético solo dentro de un abordaje multidisciplinar
+  // → se pregunta por el equipo y el permiso para coordinarse.
+  function ageOf(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
+    var bd = new Date(iso + 'T00:00:00'), now = new Date(), a = now.getFullYear() - bd.getFullYear();
+    if (now < new Date(now.getFullYear(), bd.getMonth(), bd.getDate())) a--;
+    return a;
+  }
+  function isMinor(api) { var a = ageOf(api.value('fecha_nacimiento')); return a !== null && a >= 0 && a < 18; }
+  function hasTeam(api) { return api.checks('tca_equipo').some(function (x) { return x !== 'Nadie por ahora'; }); }
+  function compensates(api) { return api.checks('tca_compensacion').some(function (x) { return x !== 'No'; }); }
+  var LEGAL_TCA = LEGAL + ' Solo me coordinaré con tu equipo de salud si lo autorizas. Si eres menor de edad, el servicio lo autoriza tu madre, tu padre o tu tutor legal; desde los 14 años, el consentimiento sobre tus datos lo das tú (art. 7 de la Ley Orgánica 3/2018).';
+
+  STEP_DEFS.sobre_ti_tca = variant(STEP_DEFS.sobre_ti, { change: {
+    estado_hormonal: { label: 'Tu regla', hint: 'Los cambios en la regla dicen mucho de cómo está tu cuerpo.', opts: ['Ciclo regular', 'Ciclo irregular',
+      ['Sin regla 3 meses o más', 'Sin regla desde hace 3 meses o más'], 'Anticonceptivos hormonales', ['Aún no la he tenido', 'Aún no he tenido la regla'], 'Embarazo', 'Lactancia', 'Perimenopausia / menopausia'] }
+  }});
+  STEP_DEFS.tca_motivo = { name: 'Motivo', title: 'Qué te trae aquí', desc: 'Cuéntamelo con tus palabras. Contesta solo lo que quieras: lo demás lo hablamos en consulta.', fields: [
+    { id: 'motivo', label: '¿Qué te gustaría conseguir con este acompañamiento?', type: 'textarea', ph: 'Comer con más tranquilidad, tener más energía, dejar de pensar tanto en la comida…' },
+    { id: 'tca_decision', label: '¿De quién ha sido la idea de venir?', type: 'chips', opts: ['Mía', 'De mi familia o pareja', 'De un profesional', 'Entre varios'] },
+    { id: 'tca_miedos', label: '¿Hay algo que te preocupe o te dé miedo de empezar?', opt: true, type: 'textarea', ph: 'Lo que sea; me ayuda a ir a tu ritmo' },
+    { id: 'asesoramientos_previos', label: '¿Has trabajado antes con un/a nutricionista? ¿Qué tal fue?', opt: true, type: 'textarea', ph: 'Con quién, cuándo y cómo te fue…' }
+  ]};
+  STEP_DEFS.tca_tratamiento = { name: 'Tratamiento', title: 'Tu tratamiento', desc: 'La alimentación es una parte del tratamiento: trabajo coordinado con quien te acompaña.', fields: [
+    { id: 'tca_diagnostico', label: '¿Tienes un diagnóstico?', type: 'chips', opts: ['Anorexia nerviosa', 'Bulimia nerviosa', 'Trastorno por atracón',
+      ['TERIA / ARFID', 'Evitación o restricción de alimentos (TERIA / ARFID)'], 'Otro', 'No tengo diagnóstico', 'No lo sé'] },
+    { id: 'tca_desde', label: '¿Desde cuándo convives con esto?', opt: true, type: 'text', ph: 'Desde los 15 años, desde hace un año…' },
+    { id: 'tca_equipo', label: '¿Quién te acompaña ahora?', type: 'checks', none: 'Nadie por ahora', opts: ['Psicólogo/a', 'Psiquiatra', 'Médico/a de cabecera', 'Endocrino/a', 'Unidad de TCA', 'Nadie por ahora'] },
+    { id: 'tca_equipo_contacto', label: 'Nombre o centro de quien te lleva', opt: true, showIf: hasTeam, type: 'text', ph: 'Nombre de la psicóloga, centro de salud, unidad…' },
+    { id: 'tca_coordinacion', label: '¿Me autorizas a coordinarme con tu equipo?', showIf: hasTeam, type: 'chips', opts: ['Sí', 'Prefiero hablarlo antes', 'No'] },
+    { id: 'tca_tratamientos_previos', label: 'Tratamientos anteriores', type: 'checks', none: 'Ninguno', opts: ['Consulta ambulatoria', 'Hospital de día', 'Ingreso hospitalario', 'Ninguno'] },
+    { id: 'tca_tratamientos_detalle', label: '¿Qué te ayudó y qué no?', opt: true, type: 'textarea', ph: 'Cuándo fue y cómo te sentiste' }
+  ]};
+  STEP_DEFS.salud_tca = (function () {
+    var base = variant(STEP_DEFS.salud, { desc: 'Para acompañarte con seguridad. Deja en blanco lo que no aplique.', change: {
+      patologias: { hint: 'Diabetes, celiaquía, tiroides, enfermedad inflamatoria intestinal, osteoporosis o fracturas, problemas de corazón…' },
+      antecedentes: { hint: 'Padres, herman@s, abuel@s: trastornos de la conducta alimentaria, depresión, ansiedad, diabetes, obesidad…' },
+      medicacion: { hint: 'Nombre, dosis y desde cuándo. Incluye laxantes, diuréticos y productos para adelgazar o para el apetito, si los tomas.' },
+      documentacion: { label: '¿Analítica o electrocardiograma recientes?', ph: 'Sí, de hace dos meses; te la envío por email / No' }
+    }});
+    base.fields.unshift({ id: 'tca_senales', label: '¿Has notado algo de esto últimamente?', type: 'checks', none: 'Nada de esto',
+      opts: ['Mareos', 'Desmayos', 'Palpitaciones', 'Dolor en el pecho', 'Mucho frío', 'Cansancio fuerte', 'Caída de pelo', 'Hinchazón en piernas o cara', 'Problemas en los dientes', 'Nada de esto'] });
+    return base;
+  })();
+  STEP_DEFS.tca_comida = { name: 'Comida', title: 'Tu relación con la comida', desc: 'No hay respuestas buenas ni malas. Saberlo me ayuda a acompañarte mejor. Contesta solo lo que quieras.', fields: [
+    { id: 'tca_restriccion', label: '¿Te saltas comidas o comes menos de lo que necesitas a propósito?', type: 'chips', opts: ['Nunca', 'A veces', 'A menudo', 'Casi a diario'] },
+    { id: 'tca_atracones', label: '¿Tienes momentos de comer con sensación de perder el control?', type: 'chips', opts: ['Nunca', 'Alguna vez al mes', 'Cada semana', 'Casi a diario'] },
+    { id: 'tca_compensacion', label: '¿Haces algo para compensar lo que has comido?', type: 'checks', none: 'No', opts: ['No', 'Vómitos', 'Laxantes o diuréticos', 'Pastillas para adelgazar', 'Ejercicio para compensar', 'Ayunar o saltarme comidas'] },
+    { id: 'tca_compensacion_frecuencia', label: '¿Con qué frecuencia?', showIf: compensates, type: 'chips', opts: ['Alguna vez al mes', 'Cada semana', 'Varias veces por semana', 'A diario'] },
+    { id: 'tca_pensamientos', label: '¿Cuánto del día ocupan los pensamientos sobre la comida o tu cuerpo?', type: 'chips', opts: ['Poco', 'Una parte del día', 'La mayor parte del día', 'Casi todo el tiempo'] }
+  ]};
+  STEP_DEFS.tca_alimentos = { name: 'Alimentos', title: 'Alimentos y normas', desc: 'Lo que hoy te resulta fácil y lo que te cuesta.', fields: [
+    { id: 'tca_grupos', label: '¿Has dejado de comer algún tipo de alimento?', type: 'checks', none: 'Ninguno', opts: [['Cereales', 'Pan, pasta o arroz'], 'Dulces', ['Grasas', 'Aceite, frutos secos y otras grasas'],
+      'Carne o pescado', 'Lácteos', 'Fritos y rebozados', 'Ninguno'] },
+    { id: 'tca_evitados', label: '¿Qué alimentos o situaciones te generan más ansiedad?', opt: true, type: 'textarea', ph: 'Comer fuera, los dulces, no saber qué lleva un plato…' },
+    { id: 'tca_seguros', label: '¿Con qué alimentos te sientes tranquila/o?', opt: true, type: 'text', ph: 'Los que comes sin darle vueltas' },
+    { id: 'tca_normas', label: '¿Tienes normas con la comida?', hint: 'Horarios, formas de preparar, orden al comer, no comer delante de otras personas…', opt: true, type: 'textarea', ph: 'Cuéntame las que tengas' },
+    { id: 'tca_conductas', label: '¿Haces alguna de estas cosas a menudo?', type: 'checks', none: 'Ninguna', opts: ['Contar calorías', 'Medir o pesar lo que como', 'Subirme a la báscula', 'Mirarme mucho al espejo o evitarlo',
+      'Compararme con otras personas', 'Comer a escondidas', 'Ninguna'] }
+  ]};
+  STEP_DEFS.un_dia_tca = (function () {
+    var base = variant(STEP_DEFS.un_dia, { desc: 'Qué sueles comer en un día normal y a qué hora. No hace falta poner cantidades.' });
+    base.fields.push(
+      { id: 'tca_bebidas', label: '¿Qué bebes a lo largo del día?', opt: true, type: 'text', ph: 'Agua, café, té, refrescos, bebidas energéticas…' },
+      { id: 'tca_compania', label: '¿Sueles comer acompañada/o?', type: 'chips', opts: ['Casi siempre', 'A veces', 'Casi siempre sola/o'] },
+      { id: 'tca_momento_dificil', label: '¿Qué momento del día te resulta más difícil?', opt: true, type: 'text', ph: 'Las cenas, cuando llego a casa, los fines de semana…' });
+    return base;
+  })();
+  STEP_DEFS.tca_entorno = { name: 'Tu entorno', title: 'Tu día a día', desc: 'Tu rutina y las personas que te rodean.', fields: [
+    { id: 'trabajo', label: '¿A qué te dedicas?', type: 'text', ph: 'Estudios, trabajo…' },
+    { id: 'trabajo_tipo', label: 'Tu día es sobre todo…', type: 'chips', opts: [['Sentado (oficina, coche)', 'Sentado (clase, oficina)'], ['De pie o moviéndome', 'De pie o moviéndome'], ['Esfuerzo físico', 'Esfuerzo físico']] },
+    { id: 'tca_convivencia', label: '¿Con quién vives?', type: 'text', ph: 'Con mis padres, en un piso compartido, sola/o…' },
+    { id: 'tca_cocina', label: '¿Quién compra y cocina en casa?', type: 'chips', opts: ['Yo', 'Mi familia o pareja', 'Entre todos'] },
+    { id: 'tca_apoyo', label: '¿Quién sabe por lo que estás pasando y te apoya?', opt: true, type: 'text', ph: 'Mi madre, una amiga, mi pareja…' },
+    { id: 'fuma', label: '¿Fumas?', type: 'chips', opts: ['No', 'Ocasionalmente', 'Sí'] },
+    { id: 'alcohol', label: '¿Consumes alcohol?', type: 'chips', opts: ['No', 'Ocasionalmente', 'Habitualmente'] },
+    { id: 'tca_animo', label: '¿Cómo está tu ánimo últimamente?', hint: 'Si te encuentras muy mal o tienes pensamientos de hacerte daño, no esperes a la consulta: llama al 024 (atención a la conducta suicida, gratuito, 24 horas) o al 112.',
+      type: 'chips', opts: ['Bien', 'Regular', 'Bajo', 'Muy bajo'] }
+  ]};
+  STEP_DEFS.tca_movimiento = { name: 'Movimiento', title: 'Movimiento y ejercicio', desc: 'Lo que haces y cómo lo vives.', fields: [
+    { id: 'actividad_fisica', label: '¿Qué actividad o ejercicio realizas?', type: 'checks', none: 'Ninguna', opts: ['Gimnasio / pesas', 'Correr', 'Caminar', 'Ciclismo', 'Natación', 'CrossFit / HIIT', 'Clases dirigidas', 'Deportes de equipo', 'Yoga / pilates', 'Ninguna'] },
+    { id: 'tca_ejercicio_detalle', label: '¿Cuánto y con qué frecuencia?', opt: true, type: 'text', ph: 'Gimnasio 4 días, una hora; camino a diario…' },
+    { id: 'tca_ejercicio_relacion', label: 'Sobre el ejercicio…', type: 'checks', none: 'Nada de esto', opts: ['Me siento mal si no lo hago', 'Lo hago para compensar lo que como', 'Sigo aunque esté lesionada/o o enferma/o', 'Me cuesta descansar', 'Nada de esto'] }
+  ]};
+  STEP_DEFS.enviar_tca = { name: 'Enviar', title: 'Antes de enviar', desc: 'Un último paso. Si eres menor de edad, hará falta tu madre, tu padre o tu tutor legal.', fields: [
+    { id: 'consent_at', label: 'Protección de datos', type: 'consent', text: 'He leído la información y acepto que se traten mis datos, incluidos los de salud, para elaborar y seguir mi plan nutricional.', legal: LEGAL_TCA },
+    { id: 'tutor_nombre', label: 'Madre, padre o tutor legal: nombre y apellidos', req: true, showIf: isMinor, type: 'text', ph: 'Nombre y apellidos' },
+    { id: 'tutor_relacion', label: 'Es tu…', showIf: isMinor, type: 'chips', opts: ['Madre', 'Padre', 'Tutor legal'] },
+    { id: 'tutor_telefono', label: 'Su teléfono', req: true, showIf: isMinor, type: 'tel', ph: '600 123 456' },
+    { id: 'tutor_email', label: 'Su email', opt: true, showIf: isMinor, type: 'email', ph: 'correo@ejemplo.com' },
+    { id: 'tutor_consent_at', label: 'Autorización de la madre, el padre o el tutor legal', showIf: isMinor, type: 'consent',
+      text: 'Soy la madre, el padre o el tutor legal de quien rellena este cuestionario. He leído la información de protección de datos, autorizo que reciba el servicio de asesoramiento nutricional y consiento el tratamiento de sus datos, incluidos los de salud.' }
+  ]};
+
   var PROFILES = {
     general: { kicker: 'Primera consulta', greeting: 'Cuéntame sobre ti', meta: 'Cuanto más detalle, mejor tu plan. Se trata todo de forma confidencial.',
       steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'] },
@@ -282,7 +381,11 @@
     // El general con el historial digestivo detrás de «Salud» (que ya no repite las molestias digestivas)
     digestivo: { kicker: 'Primera consulta · digestivo', greeting: 'Cuéntame cómo te sientes', meta: 'Unos 20 minutos. Si lo dejas a medias, se guarda en este dispositivo y puedes seguir después.',
       steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dig_historia', 'dig_dolor', 'dig_heces', 'dig_senales', 'dig_alimentos', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'],
-      defs: { salud: 'salud_digestivo' } }
+      defs: { salud: 'salud_digestivo' } },
+    // TCA: sin medidas, sin objetivo de peso y sin cifras de consumo. La cabecera no nombra el trastorno.
+    tca: { kicker: 'Primera consulta', greeting: 'Cuéntame cómo estás', meta: 'Unos 15 minutos. Contesta solo lo que quieras: lo demás lo hablamos en consulta. Se trata todo de forma confidencial.',
+      steps: ['sobre_ti', 'tca_motivo', 'tca_tratamiento', 'salud', 'tca_comida', 'tca_alimentos', 'un_dia', 'tca_entorno', 'tca_movimiento', 'descanso', 'enviar'],
+      defs: { sobre_ti: 'sobre_ti_tca', salud: 'salud_tca', un_dia: 'un_dia_tca', enviar: 'enviar_tca' } }
   };
   var P = PROFILES[PERFIL];
 
@@ -307,7 +410,7 @@
     numeric: false,
     // Al marcar una actividad se añade su ficha de sesión, lista para rellenar
     onChange: function (id, api, ctl) {
-      if (id !== 'actividad_fisica') return;
+      if (id !== 'actividad_fisica' || PERFIL === 'tca') return;      // el perfil TCA no lleva fichas de sesión
       api.checks('actividad_fisica').forEach(function (a) {
         var sport = ACTIVITY_SPORT[a];
         if (sport && !ctl.hasSession(sport)) ctl.addSession(sport);
@@ -329,7 +432,7 @@
         }
       }
       if (key === 'enviar' && !api.consent('consent_at')) return 'Marca la casilla de protección de datos para poder enviar el cuestionario.';
-      if (key === 'enviar' && PERFIL === 'menor') {
+      if (key === 'enviar' && (PERFIL === 'menor' || (PERFIL === 'tca' && isMinor(api)))) {
         var tn = document.getElementById('tutor_nombre'), tt = document.getElementById('tutor_telefono');
         var okTn = tn.value.trim().length > 4, okTt = tt.value.replace(/\D/g, '').length >= 9;
         tn.classList.toggle('invalid', !okTn); tt.classList.toggle('invalid', !okTt);
