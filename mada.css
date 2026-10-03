@@ -39,6 +39,7 @@ input[type=number] { -moz-appearance: textfield; }
 .wrap { max-width: 500px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 28px) 20px 140px; }
 
 /* ── Cabecera: wordmark · kicker · saludo · meta ── */
+.preview-flag { background: var(--ink); color: var(--card); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-align: center; padding: 8px 10px; border-radius: 10px; margin-bottom: 16px; }
 .brand { display: flex; align-items: baseline; gap: 10px; }
 .wordmark { font-family: var(--font-display); font-weight: 600; font-size: 24px; letter-spacing: -0.01em; color: var(--ink); line-height: 1; }
 .wordmark sup { font-size: 9px; font-weight: 500; margin-left: 1px; vertical-align: super; }
