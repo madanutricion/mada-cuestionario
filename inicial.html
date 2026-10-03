@@ -351,8 +351,9 @@
     { id: 'tca_apoyo', label: '¿Quién sabe por lo que estás pasando y te apoya?', opt: true, type: 'text', ph: 'Mi madre, una amiga, mi pareja…' },
     { id: 'fuma', label: '¿Fumas?', type: 'chips', opts: ['No', 'Ocasionalmente', 'Sí'] },
     { id: 'alcohol', label: '¿Consumes alcohol?', type: 'chips', opts: ['No', 'Ocasionalmente', 'Habitualmente'] },
-    { id: 'tca_animo', label: '¿Cómo está tu ánimo últimamente?', hint: 'Si te encuentras muy mal o tienes pensamientos de hacerte daño, no esperes a la consulta: llama al 024 (atención a la conducta suicida, gratuito, 24 horas) o al 112.',
-      type: 'chips', opts: ['Bien', 'Regular', 'Bajo', 'Muy bajo'] }
+    // Sin teléfonos de crisis ni mención al suicidio en el formulario (decisión del usuario, 2026-10-03):
+    // «Muy bajo» llega a la app como aviso en el intake pendiente y se atiende en persona.
+    { id: 'tca_animo', label: '¿Cómo está tu ánimo últimamente?', type: 'chips', opts: ['Bien', 'Regular', 'Bajo', 'Muy bajo'] }
   ]};
   STEP_DEFS.tca_movimiento = { name: 'Movimiento', title: 'Movimiento y ejercicio', desc: 'Lo que haces y cómo lo vives.', fields: [
     { id: 'actividad_fisica', label: '¿Qué actividad o ejercicio realizas?', type: 'checks', none: 'Ninguna', opts: ['Gimnasio / pesas', 'Correr', 'Caminar', 'Ciclismo', 'Natación', 'CrossFit / HIIT', 'Clases dirigidas', 'Deportes de equipo', 'Yoga / pilates', 'Ninguna'] },
