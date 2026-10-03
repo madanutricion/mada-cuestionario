@@ -1,7 +1,8 @@
 /* MADA · motor común de los formularios públicos (cuestionario inicial y semanal).
    Página estática (GitHub Pages) → POST no-cors al doPost del Apps Script.
    Uso: MadaForm.mount({ root, brand, steps, draftKey, execUrl, base, numeric,
-                         validateStep, transform, success }).
+                         validateStep, transform, success, preview }).
+   preview: true = vista previa para el nutricionista (se recorre entero y no envía nada).
    Sin dependencias. Tipos de campo: text, email, tel, number, date, textarea, meal,
    select, chips, checks, grid, slider, weights, sport_totals, sessions, rows, consent. */
 (function (global) {
@@ -43,6 +44,16 @@
   var TOTAL_FIELDS = ['sessions', 'hours', 'km', 'rpe', 'hr'];
   var INPUT_TYPES = ['text', 'email', 'tel', 'number', 'date', 'textarea', 'meal', 'select'];
   var WORDMARK = '<span class="wordmark">mada<sup>©</sup></span>';
+  // Escala de Bristol: [valor, etiqueta, descripción, dibujo de ICONS]. La usan el inicial digestivo y su semanal.
+  var BRISTOL = [
+    ['Tipo 1', 'Tipo 1', 'Bolitas duras y separadas, cuesta expulsarlas', 'b1'],
+    ['Tipo 2', 'Tipo 2', 'Alargada, pero formada por bultos', 'b2'],
+    ['Tipo 3', 'Tipo 3', 'Alargada, con grietas en la superficie', 'b3'],
+    ['Tipo 4', 'Tipo 4', 'Alargada, lisa y blanda', 'b4'],
+    ['Tipo 5', 'Tipo 5', 'Trozos blandos con los bordes definidos', 'b5'],
+    ['Tipo 6', 'Tipo 6', 'Trozos pastosos con los bordes irregulares', 'b6'],
+    ['Tipo 7', 'Tipo 7', 'Líquida, sin trozos sólidos', 'b7']
+  ];
 
   function sportOf(key) { for (var i = 0; i < SPORTS.length; i++) if (SPORTS[i].key === key) return SPORTS[i]; return null; }
   function typeLabel(sportKey, typeKey) {
@@ -259,7 +270,8 @@
 
     // ── Esqueleto ──
     root.innerHTML =
-      '<div id="form-area"><div class="head-rule"><div class="brand">' + WORDMARK + '<span class="kicker">' + esc(cfg.brand.kicker) + '</span></div>' +
+      '<div id="form-area">' + (cfg.preview ? '<div class="preview-flag">Vista previa · no se envía nada</div>' : '') +
+      '<div class="head-rule"><div class="brand">' + WORDMARK + '<span class="kicker">' + esc(cfg.brand.kicker) + '</span></div>' +
       '<h1 class="greeting" id="greeting">' + esc(cfg.brand.greeting) + '</h1><div class="week-meta" id="week-label">' + esc(cfg.brand.meta || '') + '</div></div>' +
       '<div class="progress-row"><span class="step-label" id="step-name"></span><span class="step-count" id="step-count"></span></div>' +
       '<div class="progress-track"><div class="progress-fill" id="progress"></div></div>' +
@@ -312,6 +324,7 @@
       return ids;
     }
     function saveDraft() {
+      if (cfg.preview) return;
       try {
         var d = { _st: st, _seq: seq };
         inputIds().forEach(function (id) { var el = document.getElementById(id); if (el && el.value !== '') d[id] = el.value; });
@@ -538,6 +551,14 @@
       for (var i = 0; i < steps.length; i++) { if (!stepOk(i)) return; }
       btnNext.disabled = true; btnNext.innerHTML = '<span class="spinner"></span>Enviando…';
       var data = collect();
+      if (cfg.preview) {       // vista previa: se llega al final, pero no se envía ni se toca ningún borrador
+        document.getElementById('form-area').style.display = 'none';
+        document.getElementById('nav').style.display = 'none';
+        document.getElementById('success-title').textContent = 'Vista previa';
+        document.querySelector('#success p').textContent = 'Así lo verá tu cliente. No se ha enviado nada.';
+        document.getElementById('success').classList.add('active'); window.scrollTo(0, 0);
+        return;
+      }
       // no-cors + credentials omit: la petición no lleva la sesión de Google del cliente
       // (evita el fallo multi-cuenta de Apps Script). La respuesta es opaca; doPost escribe igual.
       fetch(cfg.execUrl, { method: 'POST', mode: 'no-cors', credentials: 'omit', redirect: 'follow',
@@ -565,5 +586,5 @@
     return { collect: collect, state: st, show: show };
   }
 
-  global.MadaForm = { mount: mount, SPORTS: SPORTS, esc: esc, localISO: localISO };
+  global.MadaForm = { mount: mount, SPORTS: SPORTS, BRISTOL: BRISTOL, esc: esc, localISO: localISO };
 })(window);
