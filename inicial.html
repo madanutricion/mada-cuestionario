@@ -8,23 +8,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="mada.css?v=20261001">
+<link rel="stylesheet" href="mada.css?v=20261003">
 </head>
 <body>
 <!-- MADA · Cuestionario inicial por perfiles (v3, 2026-10-01).
-     inicial.html?perfil=general|deportista|menor  (sin parámetro o desconocido = general).
+     inicial.html?perfil=general|deportista|menor|digestivo  (sin parámetro o desconocido = general).
+     digestivo = el general más cinco pasos de historial digestivo (síntomas, dolor por zonas, heces, señales, alimentos).
      menor = el general con el día a día adaptado y la autorización de madre, padre o tutor legal.
      Página estática (GitHub Pages) → POST (form:'intake') al doPost del Apps Script →
      pestaña INICIAL (todo viaja en raw_json) → la app crea el cliente tras la revisión.
      Motor y estilos: mada.js / mada.css (compartidos con el cuestionario semanal). -->
 <div class="wrap"><div id="app"></div></div>
-<script src="mada.js?v=20261002"></script>
+<script src="mada.js?v=20261003"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var CONTACT_EMAIL = 'madanutricion@gmail.com';   // confirmado por el usuario el 2026-10-02
 
   // ── Perfil (lo elige el nutricionista al copiar el enlace) ──
-  var KNOWN = ['general', 'deportista', 'menor'];
+  var KNOWN = ['general', 'deportista', 'menor', 'digestivo'];
   var PERFIL = (new URLSearchParams(location.search).get('perfil') || 'general').toLowerCase();
   if (KNOWN.indexOf(PERFIL) < 0) PERFIL = 'general';
 
@@ -197,6 +198,80 @@
       text: 'Soy la madre, el padre o el tutor legal de quien rellena este cuestionario. He leído la información de protección de datos, autorizo que reciba el servicio de asesoramiento nutricional y consiento el tratamiento de sus datos, incluidos los de salud.' }
   ]};
 
+  // ── Perfil «digestivo»: el general + historial digestivo. Las claves dig_* van a la anamnesis «Digestivo» ──
+  function has(id, val) { return function (api) { return api.checks(id).indexOf(val) >= 0; }; }
+  function hasPain(api) { var d = api.chip('dig_dolor'); return d === 'A veces' || d === 'A menudo'; }
+  function hasGas(api) { var g = api.chip('dig_gases'); return g === 'A veces' || g === 'Sí'; }
+  function hasAlarm(api) { return api.checks('dig_alarma').some(function (a) { return a !== 'Nada de esto'; }); }
+  // Zonas del abdomen vistas de frente (1 = bajo las costillas del lado derecho de la persona), como en la exploración clínica
+  var ZONES = [
+    ['1 · hipocondrio derecho', '1', 'bajo las costillas'], ['2 · epigastrio', '2', 'boca del estómago'], ['3 · hipocondrio izquierdo', '3', 'bajo las costillas'],
+    ['4 · flanco derecho', '4', 'costado'], ['5 · zona del ombligo', '5', 'ombligo'], ['6 · flanco izquierdo', '6', 'costado'],
+    ['7 · fosa ilíaca derecha', '7', 'ingle'], ['8 · hipogastrio', '8', 'bajo vientre'], ['9 · fosa ilíaca izquierda', '9', 'ingle'],
+    ['Difuso', 'Difuso: no sabría señalar un punto']
+  ];
+  var BRISTOL = [
+    ['Tipo 1', 'Tipo 1', 'Bolitas duras y separadas, cuesta expulsarlas', 'b1'],
+    ['Tipo 2', 'Tipo 2', 'Alargada, pero formada por bultos', 'b2'],
+    ['Tipo 3', 'Tipo 3', 'Alargada, con grietas en la superficie', 'b3'],
+    ['Tipo 4', 'Tipo 4', 'Alargada, lisa y blanda', 'b4'],
+    ['Tipo 5', 'Tipo 5', 'Trozos blandos con los bordes definidos', 'b5'],
+    ['Tipo 6', 'Tipo 6', 'Trozos pastosos con los bordes irregulares', 'b6'],
+    ['Tipo 7', 'Tipo 7', 'Líquida, sin trozos sólidos', 'b7']
+  ];
+  STEP_DEFS.salud_digestivo = variant(STEP_DEFS.salud, { omit: ['digestivo', 'digestivo_detalle'] });
+  STEP_DEFS.dig_historia = { name: 'Digestión', title: 'Tu digestión', desc: 'Cuanto más me cuentes, mejor podré valorar tu caso. Deja en blanco lo que no te pase.', fields: [
+    { id: 'dig_diagnostico', label: '¿Tienes algún diagnóstico médico digestivo?', hint: 'Si tienes informes o pruebas, envíamelos por email o Drive.', opt: true, type: 'text', ph: 'Colon irritable, celiaquía, SIBO, gastritis, Helicobacter…' },
+    { id: 'dig_inicio', label: '¿Desde cuándo tienes molestias?', hint: '¿Lo asocias a algún momento concreto de tu vida?', type: 'textarea', ph: 'Desde hace dos años, tras una gastroenteritis; fue a más al cambiar de trabajo…' },
+    { id: 'dig_intoxicacion', label: '¿Alguna intoxicación alimentaria reciente o que relaciones con tus síntomas?', opt: true, type: 'text', ph: 'Cuándo y con qué' },
+    { id: 'dig_viajes', label: '¿Has viajado a otros países? ¿Tuviste diarrea del viajero?', opt: true, type: 'text', ph: 'Qué países y cuándo' },
+    { id: 'dig_sintomas', label: '¿Qué notas habitualmente?', type: 'checks', none: 'Nada de esto', opts: ['Hinchazón o distensión', 'Reflujo o acidez', 'Digestiones pesadas', 'Náuseas', 'Vómitos', 'Eructos frecuentes', 'Nada de esto'] },
+    { id: 'dig_hinchazon_cuando', label: '¿Cuándo aparece la hinchazón?', showIf: has('dig_sintomas', 'Hinchazón o distensión'), type: 'checks', opts: ['Ya al levantarme', 'Después de comer', 'Va a más durante el día', 'Con alimentos concretos', 'Con el estrés'] },
+    { id: 'dig_vomitos_cuando', label: '¿Cuándo suelen darse los vómitos?', showIf: has('dig_sintomas', 'Vómitos'), type: 'text', ph: 'Después de cenar, por las mañanas…' },
+    { id: 'dig_tras_comer', label: 'Después de comer…', type: 'chips', opts: ['Me encuentro igual', 'Me alivia', 'Me duele o empeoro'] },
+    { id: 'dig_sintomas_detalle', label: 'Cuéntame más', hint: 'Cuándo aparecen, con qué comidas, qué los alivia…', opt: true, type: 'textarea', ph: 'La acidez me viene por la noche, al tumbarme…' }
+  ]};
+  STEP_DEFS.dig_dolor = { name: 'Dolor y gases', title: 'Dolor y gases', desc: 'Dónde, cuándo y cómo.', fields: [
+    { id: 'dig_dolor', label: '¿Tienes dolor en el abdomen?', hint: 'Al palparte o sin tocarte.', type: 'chips', opts: ['No', 'A veces', 'A menudo'] },
+    { id: 'dig_dolor_zonas', label: '¿Dónde te duele?', hint: 'Marca todas las zonas. Están vistas de frente: la columna de la izquierda es tu lado derecho.', showIf: hasPain,
+      type: 'checks', layout: 'grid3', head: ['Tu lado derecho', 'Centro', 'Tu lado izquierdo'], none: 'Difuso', opts: ZONES },
+    { id: 'dig_dolor_cuando', label: '¿En qué momentos?', opt: true, showIf: hasPain, type: 'text', ph: 'Después de comer, antes de ir al baño, con la regla…' },
+    { id: 'dig_dolor_bano', label: '¿Mejora al ir al baño?', showIf: hasPain, type: 'chips', opts: ['Sí', 'A veces', 'No'] },
+    { id: 'dig_gases', label: '¿Tienes exceso de gases?', type: 'chips', opts: ['No', 'A veces', 'Sí'] },
+    { id: 'dig_gases_cuando', label: '¿En qué momento?', showIf: hasGas, type: 'checks', opts: ['Después de las comidas', 'Al final del día', 'Con alimentos concretos', 'Todo el día'] },
+    { id: 'dig_gases_molestia', label: '¿Sientes malestar o quemazón al expulsarlos?', hint: 'Contesta aunque no tengas exceso de gases.', type: 'chips', opts: ['No', 'A veces', 'Sí'] },
+    { id: 'dig_gases_olor', label: '¿Cómo huelen?', type: 'chips', opts: ['Apenas huelen', 'Olor normal', ['Olor fuerte (huevo podrido)', 'Olor fuerte, como a huevo podrido']] }
+  ]};
+  STEP_DEFS.dig_heces = { name: 'Deposiciones', title: 'Tus deposiciones', desc: 'No es lo más agradable de contar, pero es de lo que más información da.', fields: [
+    { id: 'dig_ritmo', label: '¿Cómo es tu ritmo intestinal?', type: 'chips', opts: ['Normal', 'Estreñimiento', 'Diarrea', 'Alterno las dos'] },
+    { id: 'dig_frecuencia', label: '¿Cuántas veces vas al baño?', type: 'text', ph: '1-2 al día, una cada tres días…' },
+    { id: 'dig_momento', label: '¿En qué momento del día?', opt: true, type: 'checks', opts: ['Al levantarme', 'Justo después de comer', 'Por la noche', 'Sin momento fijo'] },
+    { id: 'dig_bristol', label: '¿A cuál se parecen más tus heces?', hint: 'Puedes marcar varias.', type: 'checks', layout: 'rows', opts: BRISTOL },
+    { id: 'dig_bristol_detalle', label: 'Si varían, ¿con qué frecuencia cada tipo?', hint: 'Y si has visto que cambian con algún alimento o situación.', opt: true, type: 'textarea', ph: 'Casi siempre tipo 3; tipo 6 cuando como fuera o estoy con nervios…' },
+    { id: 'dig_heces_color', label: 'Color y olor', opt: true, type: 'text', ph: 'Marrón, amarillentas, verdosas, muy oscuras, olor muy fuerte…' },
+    { id: 'dig_heces_rasgos', label: '¿Has notado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Restos de alimentos', 'Flotan', 'Aceitosas o grasientas', 'Manchan mucho el váter', 'Nada de esto'] },
+    { id: 'dig_heces_inicio', label: '¿Los cambios empezaron en un momento concreto?', opt: true, type: 'text', ph: 'Tras unos antibióticos, un viaje, una época de estrés…' }
+  ]};
+  STEP_DEFS.dig_senales = { name: 'Otras señales', title: 'Otras señales', desc: 'Algunas parecen no tener que ver con la digestión, pero ayudan a entender el cuadro.', fields: [
+    { id: 'dig_alarma', label: '¿Te ha pasado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Sangre en las heces o heces negras', 'Bulto en el abdomen al palparte', 'Dificultad para tragar', 'Pérdida de peso sin buscarla', 'Pérdida de apetito', 'Anemias recurrentes', 'Nada de esto'] },
+    { id: 'dig_alarma_detalle', label: 'Cuéntame cuánto, desde cuándo y si lo has consultado con tu médico', showIf: hasAlarm, type: 'textarea', ph: 'He perdido 4 kg en dos meses sin cambiar nada; aún no he ido al médico…' },
+    { id: 'dig_boca', label: 'En la boca', type: 'checks', none: 'Nada de esto', opts: ['Mal sabor o sabor metálico', 'Boca pastosa o seca', 'Mal aliento', 'Llagas o aftas', 'Caries frecuentes', 'Herpes', 'Lengua blanca', 'Gingivitis', 'Candidiasis', 'Nada de esto'] },
+    { id: 'dig_infecciones', label: '¿Infecciones que se repiten?', opt: true, type: 'text', ph: 'De orina, en las uñas, hongos…' },
+    { id: 'dig_signos', label: '¿Notas alguno de estos signos?', type: 'checks', none: 'Ninguno', opts: ['Caída de pelo o pelo quebradizo', 'Caída de pelo de las cejas', 'Uñas quebradizas o con líneas', 'Dolores de cabeza habituales', 'Mareos o vista nublada',
+      ['Alteraciones en la piel', 'Piel: eczema, rojez o picor'], 'Fatiga', 'Neblina mental', 'Ninguno'] },
+    { id: 'dig_signos_detalle', label: 'Describe lo que creas conveniente', opt: true, type: 'textarea', ph: 'Picor solo en verano, mareos al levantarme rápido…' },
+    { id: 'dig_estres', label: '¿Eres propenso/a al estrés o la ansiedad?', type: 'chips', opts: ['No', 'Algo', 'Mucho'] },
+    { id: 'dig_estres_relacion', label: '¿Tus síntomas o recaídas van con el estrés?', type: 'chips', opts: ['No', 'A veces', 'Sí', 'No lo sé'] }
+  ]};
+  STEP_DEFS.dig_alimentos = { name: 'Alimentos', title: 'Alimentos que te sientan mal', desc: 'Lo que ya hayas detectado. Si no lo tienes claro, también me vale.', fields: [
+    { id: 'dig_ninez', label: '¿Alguna alergia o sensibilidad a alimentos de niño/a?', opt: true, type: 'text', ph: 'Leche, huevo…' },
+    { id: 'dig_evita', label: '¿Evitas algún alimento aunque no tengas alergia ni intolerancia?', opt: true, type: 'textarea', ph: 'Cuáles y por qué' },
+    { id: 'dig_sientan_mal', label: '¿Qué relacionas con tus síntomas?', hint: 'Entre las verduras, sobre todo ajo, cebolla, puerro, espárragos, champiñón o guisantes; entre las frutas, manzana, melocotón o cereza.', type: 'checks', none: 'Ninguno',
+      opts: ['Picantes', 'Salsas', ['Café / té / cacao', 'Café, té o cacao'], 'Refrescos', 'Ultraprocesados', 'Grasas y fritos', 'Legumbres', 'Frutos secos', 'Verduras', 'Frutas', 'Integrales', 'Huevos', 'Pescados', 'Carnes', 'Ninguno'] },
+    { id: 'dig_sientan_mal_detalle', label: '¿Cuáles en concreto y qué te provocan?', opt: true, type: 'textarea', ph: 'La cebolla cruda me hincha; el café me da acidez…' },
+    { id: 'dig_libre', label: '¿Algo más que quieras contarme?', hint: 'Cómo estás ahora, qué has probado ya, lo que creas importante y no te haya preguntado.', opt: true, type: 'textarea', ph: 'Lo que quieras' }
+  ]};
+
   var PROFILES = {
     general: { kicker: 'Primera consulta', greeting: 'Cuéntame sobre ti', meta: 'Cuanto más detalle, mejor tu plan. Se trata todo de forma confidencial.',
       steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'] },
@@ -205,7 +280,11 @@
     // Mismos pasos y claves que el general; `defs` cambia la definición de tres de ellos
     menor: { kicker: 'Primera consulta · menores de edad', greeting: 'Cuéntame sobre ti', meta: 'Rellénalo tú. En el último paso hará falta tu madre, tu padre o tu tutor legal un minuto para autorizarlo.',
       steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'],
-      defs: { sobre_ti: 'sobre_ti_menor', dia: 'dia_menor', enviar: 'enviar_menor' } }
+      defs: { sobre_ti: 'sobre_ti_menor', dia: 'dia_menor', enviar: 'enviar_menor' } },
+    // El general con el historial digestivo detrás de «Salud» (que ya no repite las molestias digestivas)
+    digestivo: { kicker: 'Primera consulta · digestivo', greeting: 'Cuéntame cómo te sientes', meta: 'Unos 20 minutos. Si lo dejas a medias, se guarda en este dispositivo y puedes seguir después.',
+      steps: ['sobre_ti', 'medidas', 'objetivo', 'salud', 'dig_historia', 'dig_dolor', 'dig_heces', 'dig_senales', 'dig_alimentos', 'dia', 'cocina', 'preferencias', 'un_dia', 'actividad', 'descanso', 'enviar'],
+      defs: { salud: 'salud_digestivo' } }
   };
   var P = PROFILES[PERFIL];
 
