@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="mada.css?v=20261003">
+<link rel="stylesheet" href="mada.css?v=2026100302">
 </head>
 <body>
 <!-- MADA · Cuestionario semanal (2026-10-01: mismas preguntas y claves que la versión anterior,
@@ -24,7 +24,7 @@
   </div>
   <div id="app" style="display:none"></div>
 </div>
-<script src="mada.js?v=20261003"></script>
+<script src="mada.js?v=2026100302"></script>
 <script>
   // Si algún día cambia la URL /exec del Apps Script, se actualiza SOLO esta constante.
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
@@ -37,6 +37,10 @@
   var WEEK_START = (Q.get('w') || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(WEEK_START)) WEEK_START = ymd(mondayOf(new Date()));
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  // Variante del semanal (&p=): '' = general. Vista previa para el nutricionista: &preview=1 (no envía nada).
+  var PERFIL = (Q.get('p') || '').trim().toLowerCase();
+  if (['deportista', 'digestivo', 'tca'].indexOf(PERFIL) < 0) PERFIL = '';
+  var PREVIEW = Q.get('preview') === '1';
 
   if (!TOKEN) {
     document.getElementById('invalid').style.display = 'block';
@@ -44,51 +48,129 @@
     document.getElementById('app').style.display = 'block';
     var ws = new Date(WEEK_START + 'T12:00:00'), we = new Date(ws); we.setDate(ws.getDate() + 6);
     var opt = function (id, label, ph) { return { id: id, label: label, opt: true, type: 'text', ph: ph }; };
+    var slider = function (id, label, minLabel, maxLabel, emojis) { return { id: id, type: 'slider', label: label, minLabel: minLabel, maxLabel: maxLabel, emojis: emojis }; };
+
+    // ── Campos comunes (mismas claves y textos de siempre: son las columnas de la hoja) ──
+    var F = {
+      cansancio: { id: 'cansancio_0_10', type: 'slider', label: 'Nivel de cansancio', emojis: ['⚡', '😊', '😐', '🥱', '😵'], minLabel: 'Con energía', maxLabel: 'Agotado/a' },
+      causa: opt('causa_cansancio', '¿A qué crees que se debe?', 'Trabajo, poco sueño, entrenos…'),
+      sueno: { id: 'calidad_sueno_0_10', type: 'slider', label: 'Calidad del sueño', emojis: ['😫', '😕', '😐', '🙂', '😴'], minLabel: 'Muy mala', maxLabel: 'Excelente' },
+      horas: { id: 'horas_sueno', label: 'Horas de sueño', hint: 'Media por noche.', type: 'number', ph: '7.5', min: 0, max: 16, step: 0.5 },
+      animo: { id: 'animo_0_10', type: 'slider', label: 'Estado de ánimo', emojis: ['😞', '😕', '😐', '🙂', '😄'], minLabel: 'Muy bajo', maxLabel: 'Genial' },
+      notasSueno: opt('notas_sueno', 'Notas sobre el descanso', 'Me despierto por la noche, madrugones…'),
+      saciedad: { id: 'saciedad_0_10', type: 'slider', label: 'Saciedad', emojis: ['😣', '😕', '😐', '🙂', '😌'], minLabel: 'Paso hambre', maxLabel: 'Muy saciado/a' },
+      hambre: opt('hambre_notas', '¿Hambre a alguna hora concreta?', 'Media tarde, antes de cenar…'),
+      digestiones: { id: 'digestiones_0_10', type: 'slider', label: 'Digestiones', emojis: ['🤢', '😕', '😐', '🙂', '✨'], minLabel: 'Muy malas', maxLabel: 'Perfectas' },
+      molestias: opt('molestias_digestivas', '¿Molestias digestivas?', 'Hinchazón, acidez, gases…'),
+      hidratacion: { id: 'hidratacion_0_10', type: 'slider', label: 'Hidratación', emojis: ['🏜️', '😕', '😐', '🙂', '💧'], minLabel: 'Muy poca agua', maxLabel: 'Muy bien' },
+      pasos: { id: 'pasos_diarios', label: 'Pasos diarios', hint: 'Media, según tu reloj o móvil.', opt: true, type: 'number', ph: '10000', int: true, min: 0, max: 80000, step: 100 },
+      entrenos: { id: 'entrenos_json', label: 'Entrenos de esta semana', hint: 'Toca lo que hayas hecho. Totales de la semana: sesiones, horas, kilómetros, cómo de duro ha sido (0 = paseo, 10 = al límite) y, si tu reloj la da, la frecuencia cardíaca media.', opt: true, type: 'sport_totals' },
+      extra: opt('ejercicio_extra', '¿Ejercicio fuera de lo programado?', 'Ruta el sábado, pádel el jueves…'),
+      proxima: { id: 'proxima_semana', label: '¿Algo que deba saber para la semana que viene?', hint: 'Viajes, comidas fuera, celebraciones, cambios de horario o de entrenos… para adaptar el plan antes, no después.', opt: true, type: 'textarea', ph: 'Cena de empresa el jueves, fin de semana fuera…' },
+      comentarios: { id: 'comentarios', label: '¿Algo más que quieras contarme?', opt: true, type: 'textarea', ph: 'Dudas, sensaciones, lo que sea…' }
+    };
+    // ── Pasos comunes ──
+    var S = {
+      peso: { key: 'peso', name: 'Peso', title: 'Tu peso esta semana', desc: 'Apunta los días que te hayas pesado (en ayunas). Los que no tengas, déjalos en blanco.', fields: [
+        { id: 'pesos', type: 'weights', weekStart: WEEK_START }
+      ]},
+      descanso: { key: 'descanso', name: 'Descanso y energía', title: 'Descanso y energía', desc: '¿Cómo te has sentido en general durante la semana?', fields: [F.cansancio, F.causa, F.sueno, F.horas, F.animo, F.notasSueno] },
+      alimentacion: { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación y digestión', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [F.saciedad, F.hambre, F.digestiones, F.molestias, F.hidratacion] },
+      plan: { key: 'plan', name: 'Tu plan', title: 'Tu menú semanal', desc: 'Esto nos ayuda a ajustar los platos de las próximas semanas.', fields: [
+        { id: 'adherencia_0_10', type: 'slider', label: '¿Cuánto has seguido el plan esta semana?', emojis: ['🙈', '😬', '😐', '🙂', '🎯'], minLabel: 'Casi nada', maxLabel: 'Al 100 %' },
+        { id: 'satisfaccion_menu', label: '¿Contento/a con el menú?', type: 'text', ph: 'Sí, aunque repetiría menos las cenas…' },
+        { id: 'aburrimiento_0_10', type: 'slider', label: '¿Te aburre el menú?', emojis: ['🤩', '🙂', '😐', '🥱', '😪'], minLabel: 'Para nada', maxLabel: 'Mucho' },
+        { id: 'dificultades_plan', label: '¿Dificultades para seguir el plan?', opt: true, type: 'textarea', ph: 'Comidas fuera, falta de tiempo para cocinar…' },
+        opt('cambios_platos', '¿Cambiarías algún plato?', 'El salmón del martes por otro pescado…'),
+        opt('platos_favoritos', '¿Platos favoritos de la semana?', 'El curry de garbanzos')
+      ]},
+      actividad: { key: 'actividad', name: 'Actividad', title: 'Actividad y último apunte', desc: 'Ya casi está. Un par de datos más y terminamos.', fields: [F.pasos, F.entrenos, F.extra, F.proxima, F.comentarios] }
+    };
+
+    // ── Variantes por perfil (lo elige el nutricionista en la ficha; viaja en el enlace como &p=) ──
+    // Las respuestas propias de cada perfil (dep_*, dig_*, tca_*) no tienen columna en la hoja:
+    // el Apps Script las guarda juntas en «extra_json» y la app las muestra en la revisión de la semana.
+    var VARIANTS = {
+      '': { kicker: 'Seguimiento semanal', steps: [S.peso, S.descanso, S.alimentacion, S.plan, S.actividad] },
+
+      deportista: { kicker: 'Seguimiento semanal · deportistas', steps: [S.peso, S.descanso, S.alimentacion, S.plan,
+        { key: 'entrenos', name: 'Entrenos', title: 'Tus entrenos', desc: 'Lo que has hecho y cómo te has encontrado entrenando.', fields: [
+          F.entrenos,
+          slider('dep_energia_0_10', 'Energía en los entrenos', 'Vacío/a', 'Con fuerza', ['🪫', '😕', '😐', '🙂', '⚡']),
+          slider('dep_recuperacion_0_10', 'Recuperación entre sesiones', 'Muy mala', 'Muy buena', ['🥵', '😕', '😐', '🙂', '💪']),
+          { id: 'dep_pauta', label: '¿Has seguido lo pautado antes, durante y después de entrenar?', type: 'chips', opts: ['Sí', 'A medias', 'No'] },
+          opt('dep_pauta_notas', '¿Qué te ha costado o qué cambiarías?', 'El gel de la tirada me sienta regular…'),
+          { id: 'dep_gi', label: '¿Molestias digestivas entrenando?', type: 'checks', none: 'Ninguna', opts: ['Ninguna', 'Náuseas', 'Flato', 'Calambres abdominales', 'Diarrea', 'Reflujo'] },
+          F.extra
+        ]},
+        { key: 'actividad', name: 'Actividad', title: 'Último apunte', desc: 'Ya casi está.', fields: [F.pasos, F.proxima, F.comentarios] }
+      ]},
+
+      digestivo: { kicker: 'Seguimiento semanal · digestivo', steps: [S.peso, S.descanso,
+        { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [F.saciedad, F.hambre, F.digestiones, F.hidratacion] },
+        { key: 'digestion', name: 'Digestión', title: 'Tu digestión esta semana', desc: 'De 0 (nada) a 10 (mucho). Deja sin tocar lo que no hayas tenido.', fields: [
+          slider('dig_hinchazon_0_10', 'Hinchazón', 'Nada', 'Mucha'),
+          slider('dig_dolor_0_10', 'Dolor abdominal', 'Nada', 'Mucho'),
+          slider('dig_gases_0_10', 'Gases', 'Nada', 'Muchos'),
+          slider('dig_reflujo_0_10', 'Reflujo o acidez', 'Nada', 'Mucho'),
+          { id: 'dig_sento_mal', label: '¿Algo que te haya sentado mal?', opt: true, type: 'textarea', ph: 'Qué comiste y qué notaste' },
+          opt('dig_sento_bien', '¿Algo nuevo que hayas probado y te haya sentado bien?', 'El yogur sin lactosa, la avena…')
+        ]},
+        { key: 'bano', name: 'Deposiciones', title: 'Tus deposiciones', desc: 'Cómo ha ido el baño esta semana.', fields: [
+          { id: 'dig_ritmo', label: '¿Cómo ha ido?', type: 'chips', opts: ['Normal', 'Estreñimiento', 'Diarrea', 'Alterno las dos'] },
+          opt('dig_frecuencia', '¿Cuántas veces has ido?', '1-2 al día, una cada tres días…'),
+          { id: 'dig_bristol', label: '¿Cómo han sido tus heces?', hint: 'Puedes marcar varias.', type: 'checks', layout: 'rows', opts: MadaForm.BRISTOL },
+          { id: 'dig_alarma', label: '¿Te ha pasado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Sangre en las heces o heces negras', 'Vómitos', 'Nada de esto'] }
+        ]},
+        S.plan, S.actividad
+      ]},
+
+      // TCA: sin peso, sin pasos y sin nota de adherencia. Ninguna pregunta nombra el peso, las calorías ni la dieta.
+      tca: { kicker: 'Seguimiento semanal', steps: [
+        { key: 'semana', name: 'Tu semana', title: 'Tu semana', desc: 'Cómo te has encontrado estos días.', fields: [F.animo, F.cansancio, F.causa, F.sueno, F.horas, F.notasSueno] },
+        { key: 'comidas', name: 'Comidas', title: 'Las comidas', desc: 'Aquí no hay notas ni exámenes: solo quiero saber cómo ha ido.', fields: [
+          { id: 'tca_regularidad', label: '¿Has podido hacer las comidas que acordamos?', type: 'chips', opts: ['Todas o casi todas', 'La mayoría', 'Algunas', 'Me ha costado mucho'] },
+          { id: 'tca_cuesta', label: '¿Cuál te ha costado más?', type: 'checks', none: 'Ninguna', opts: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Ninguna'] },
+          slider('tca_ansiedad_0_10', 'Ansiedad o malestar alrededor de las comidas', 'Ninguna', 'Mucha'),
+          { id: 'tca_dificil', label: '¿Qué te ha resultado más difícil?', opt: true, type: 'textarea', ph: 'Lo que quieras contarme' },
+          { id: 'tca_logro', label: '¿Qué ha ido bien esta semana?', hint: 'Por pequeño que parezca.', opt: true, type: 'textarea', ph: 'Desayuné todos los días, comí con mis amigas…' },
+          opt('tca_reto', '¿Has probado algún alimento o situación que te costaba?', 'Comer fuera, un alimento que evitabas…')
+        ]},
+        { key: 'momentos', name: 'Momentos difíciles', title: 'Momentos difíciles', desc: 'No hay respuestas buenas ni malas. Saberlo me ayuda a acompañarte mejor. Contesta solo lo que quieras.', fields: [
+          { id: 'tca_restriccion', label: '¿Has comido menos de lo acordado o te has saltado comidas a propósito?', type: 'chips', opts: ['No', 'Alguna vez', 'A menudo'] },
+          { id: 'tca_atracones', label: '¿Has tenido momentos de comer con sensación de perder el control?', type: 'chips', opts: ['No', '1-2 veces', '3 o más'] },
+          { id: 'tca_compensacion', label: '¿Has hecho algo para compensar lo que habías comido?', type: 'checks', none: 'No', opts: ['No', 'Vómitos', 'Laxantes o diuréticos', 'Ejercicio para compensar', 'Ayunar o saltarme la comida siguiente'] },
+          { id: 'tca_contexto', label: 'Si quieres, cuéntame qué pasó o cómo te sentías', opt: true, type: 'textarea', ph: 'Lo que te apetezca compartir' }
+        ]},
+        { key: 'cuerpo', name: 'Tu cuerpo', title: 'Cómo está tu cuerpo', desc: 'Señales físicas de esta semana.', fields: [
+          { id: 'tca_fisico', label: '¿Has notado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Mareos', 'Mucho frío', 'Cansancio fuerte', 'Hinchazón o malas digestiones', 'Estreñimiento', 'Nada de esto'] },
+          slider('tca_imagen_0_10', 'Preocupación por tu cuerpo o tu imagen', 'Ninguna', 'Muchísima'),
+          opt('tca_movimiento', '¿Qué movimiento o ejercicio has hecho?', 'Paseos, yoga, gimnasio…')
+        ]},
+        { key: 'final', name: 'Para terminar', title: 'Para terminar', desc: 'Lo que quieras que tenga en cuenta.', fields: [
+          { id: 'tca_hablar', label: '¿De qué te gustaría hablar en la próxima consulta?', opt: true, type: 'textarea', ph: 'Lo que más te ronde' },
+          { id: 'proxima_semana', label: '¿Algo que deba saber para la semana que viene?', hint: 'Viajes, comidas fuera, celebraciones, cambios de horario… para tenerlo en cuenta antes, no después.', opt: true, type: 'textarea', ph: 'Cena con amigos el jueves, fin de semana fuera…' },
+          F.comentarios
+        ]}
+      ],
+      success: { title: 'Gracias', text: 'Lo leo con calma antes de nuestra próxima consulta.',
+        titleFor: function () { return CLIENT_NAME ? 'Gracias, ' + CLIENT_NAME : ''; } } }
+    };
+    var V = VARIANTS[PERFIL];
+    var base = { token: TOKEN, week_start: WEEK_START };
+    if (PERFIL) base.perfil = PERFIL;
 
     MadaForm.mount({
       root: '#app',
-      brand: { kicker: 'Seguimiento semanal', greeting: CLIENT_NAME ? 'Hola, ' + CLIENT_NAME : 'Hola',
+      brand: { kicker: V.kicker, greeting: CLIENT_NAME ? 'Hola, ' + CLIENT_NAME : 'Hola',
                meta: 'Semana del ' + ws.getDate() + ' de ' + MESES[ws.getMonth()] + ' al ' + we.getDate() + ' de ' + MESES[we.getMonth()] },
-      draftKey: 'mada_q_' + TOKEN + '_' + WEEK_START,
+      draftKey: 'mada_q_' + TOKEN + '_' + WEEK_START + (PREVIEW ? '_preview' : ''),
       execUrl: EXEC_URL,
-      base: { token: TOKEN, week_start: WEEK_START },
+      base: base,
       numeric: true,
-      steps: [
-        { key: 'peso', name: 'Peso', title: 'Tu peso esta semana', desc: 'Apunta los días que te hayas pesado (en ayunas). Los que no tengas, déjalos en blanco.', fields: [
-          { id: 'pesos', type: 'weights', weekStart: WEEK_START }
-        ]},
-        { key: 'descanso', name: 'Descanso y energía', title: 'Descanso y energía', desc: '¿Cómo te has sentido en general durante la semana?', fields: [
-          { id: 'cansancio_0_10', type: 'slider', label: 'Nivel de cansancio', emojis: ['⚡', '😊', '😐', '🥱', '😵'], minLabel: 'Con energía', maxLabel: 'Agotado/a' },
-          opt('causa_cansancio', '¿A qué crees que se debe?', 'Trabajo, poco sueño, entrenos…'),
-          { id: 'calidad_sueno_0_10', type: 'slider', label: 'Calidad del sueño', emojis: ['😫', '😕', '😐', '🙂', '😴'], minLabel: 'Muy mala', maxLabel: 'Excelente' },
-          { id: 'horas_sueno', label: 'Horas de sueño', hint: 'Media por noche.', type: 'number', ph: '7.5', min: 0, max: 16, step: 0.5 },
-          { id: 'animo_0_10', type: 'slider', label: 'Estado de ánimo', emojis: ['😞', '😕', '😐', '🙂', '😄'], minLabel: 'Muy bajo', maxLabel: 'Genial' },
-          opt('notas_sueno', 'Notas sobre el descanso', 'Me despierto por la noche, madrugones…')
-        ]},
-        { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación y digestión', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [
-          { id: 'saciedad_0_10', type: 'slider', label: 'Saciedad', emojis: ['😣', '😕', '😐', '🙂', '😌'], minLabel: 'Paso hambre', maxLabel: 'Muy saciado/a' },
-          opt('hambre_notas', '¿Hambre a alguna hora concreta?', 'Media tarde, antes de cenar…'),
-          { id: 'digestiones_0_10', type: 'slider', label: 'Digestiones', emojis: ['🤢', '😕', '😐', '🙂', '✨'], minLabel: 'Muy malas', maxLabel: 'Perfectas' },
-          opt('molestias_digestivas', '¿Molestias digestivas?', 'Hinchazón, acidez, gases…'),
-          { id: 'hidratacion_0_10', type: 'slider', label: 'Hidratación', emojis: ['🏜️', '😕', '😐', '🙂', '💧'], minLabel: 'Muy poca agua', maxLabel: 'Muy bien' }
-        ]},
-        { key: 'plan', name: 'Tu plan', title: 'Tu menú semanal', desc: 'Esto nos ayuda a ajustar los platos de las próximas semanas.', fields: [
-          { id: 'adherencia_0_10', type: 'slider', label: '¿Cuánto has seguido el plan esta semana?', emojis: ['🙈', '😬', '😐', '🙂', '🎯'], minLabel: 'Casi nada', maxLabel: 'Al 100 %' },
-          { id: 'satisfaccion_menu', label: '¿Contento/a con el menú?', type: 'text', ph: 'Sí, aunque repetiría menos las cenas…' },
-          { id: 'aburrimiento_0_10', type: 'slider', label: '¿Te aburre el menú?', emojis: ['🤩', '🙂', '😐', '🥱', '😪'], minLabel: 'Para nada', maxLabel: 'Mucho' },
-          { id: 'dificultades_plan', label: '¿Dificultades para seguir el plan?', opt: true, type: 'textarea', ph: 'Comidas fuera, falta de tiempo para cocinar…' },
-          opt('cambios_platos', '¿Cambiarías algún plato?', 'El salmón del martes por otro pescado…'),
-          opt('platos_favoritos', '¿Platos favoritos de la semana?', 'El curry de garbanzos')
-        ]},
-        { key: 'actividad', name: 'Actividad', title: 'Actividad y último apunte', desc: 'Ya casi está. Un par de datos más y terminamos.', fields: [
-          { id: 'pasos_diarios', label: 'Pasos diarios', hint: 'Media, según tu reloj o móvil.', opt: true, type: 'number', ph: '10000', int: true, min: 0, max: 80000, step: 100 },
-          { id: 'entrenos_json', label: 'Entrenos de esta semana', hint: 'Toca lo que hayas hecho. Totales de la semana: sesiones, horas, kilómetros, cómo de duro ha sido (0 = paseo, 10 = al límite) y, si tu reloj la da, la frecuencia cardíaca media.', opt: true, type: 'sport_totals' },
-          opt('ejercicio_extra', '¿Ejercicio fuera de lo programado?', 'Ruta el sábado, pádel el jueves…'),
-          { id: 'proxima_semana', label: '¿Algo que deba saber para la semana que viene?', hint: 'Viajes, comidas fuera, celebraciones, cambios de horario o de entrenos… para adaptar el plan antes, no después.', opt: true, type: 'textarea', ph: 'Cena de empresa el jueves, fin de semana fuera…' },
-          { id: 'comentarios', label: '¿Algo más que quieras contarme?', opt: true, type: 'textarea', ph: 'Dudas, sensaciones, lo que sea…' }
-        ]}
-      ],
-      success: { title: '¡Enviado!', text: 'Tus respuestas ya están con tu nutricionista. ¡Sigue así!',
+      preview: PREVIEW,
+      steps: V.steps,
+      success: V.success || { title: '¡Enviado!', text: 'Tus respuestas ya están con tu nutricionista. ¡Sigue así!',
         titleFor: function () { return CLIENT_NAME ? '¡Listo, ' + CLIENT_NAME + '!' : ''; } }
     });
   }
