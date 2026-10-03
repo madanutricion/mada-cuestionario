@@ -202,6 +202,10 @@
   function has(id, val) { return function (api) { return api.checks(id).indexOf(val) >= 0; }; }
   function hasPain(api) { var d = api.chip('dig_dolor'); return d === 'A veces' || d === 'A menudo'; }
   function hasGas(api) { var g = api.chip('dig_gases'); return g === 'A veces' || g === 'Sí'; }
+  // «Con alimentos concretos» abre un campo para escribirlos (solo mientras su pregunta «¿cuándo?» está a la vista)
+  var FOODS_OPT = 'Con alimentos concretos';
+  function bloatFoods(api) { return api.checks('dig_sintomas').indexOf('Hinchazón o distensión') >= 0 && api.checks('dig_hinchazon_cuando').indexOf(FOODS_OPT) >= 0; }
+  function gasFoods(api) { return hasGas(api) && api.checks('dig_gases_cuando').indexOf(FOODS_OPT) >= 0; }
   function hasAlarm(api) { return api.checks('dig_alarma').some(function (a) { return a !== 'Nada de esto'; }); }
   // Zonas del abdomen vistas de frente (1 = bajo las costillas del lado derecho de la persona), como en la exploración clínica
   var ZONES = [
@@ -227,6 +231,7 @@
     { id: 'dig_viajes', label: '¿Has viajado a otros países? ¿Tuviste diarrea del viajero?', opt: true, type: 'text', ph: 'Qué países y cuándo' },
     { id: 'dig_sintomas', label: '¿Qué notas habitualmente?', type: 'checks', none: 'Nada de esto', opts: ['Hinchazón o distensión', 'Reflujo o acidez', 'Digestiones pesadas', 'Náuseas', 'Vómitos', 'Eructos frecuentes', 'Nada de esto'] },
     { id: 'dig_hinchazon_cuando', label: '¿Cuándo aparece la hinchazón?', showIf: has('dig_sintomas', 'Hinchazón o distensión'), type: 'checks', opts: ['Ya al levantarme', 'Después de comer', 'Va a más durante el día', 'Con alimentos concretos', 'Con el estrés'] },
+    { id: 'dig_hinchazon_alimentos', label: '¿Con qué alimentos?', showIf: bloatFoods, type: 'textarea', ph: 'Legumbres, cebolla, pan, lácteos…' },
     { id: 'dig_vomitos_cuando', label: '¿Cuándo suelen darse los vómitos?', showIf: has('dig_sintomas', 'Vómitos'), type: 'text', ph: 'Después de cenar, por las mañanas…' },
     { id: 'dig_tras_comer', label: 'Después de comer…', type: 'chips', opts: ['Me encuentro igual', 'Me alivia', 'Me duele o empeoro'] },
     { id: 'dig_sintomas_detalle', label: 'Cuéntame más', hint: 'Cuándo aparecen, con qué comidas, qué los alivia…', opt: true, type: 'textarea', ph: 'La acidez me viene por la noche, al tumbarme…' }
@@ -239,6 +244,7 @@
     { id: 'dig_dolor_bano', label: '¿Mejora al ir al baño?', showIf: hasPain, type: 'chips', opts: ['Sí', 'A veces', 'No'] },
     { id: 'dig_gases', label: '¿Tienes exceso de gases?', type: 'chips', opts: ['No', 'A veces', 'Sí'] },
     { id: 'dig_gases_cuando', label: '¿En qué momento?', showIf: hasGas, type: 'checks', opts: ['Después de las comidas', 'Al final del día', 'Con alimentos concretos', 'Todo el día'] },
+    { id: 'dig_gases_alimentos', label: '¿Con qué alimentos?', showIf: gasFoods, type: 'textarea', ph: 'Coles, legumbres, refrescos…' },
     { id: 'dig_gases_molestia', label: '¿Sientes malestar o quemazón al expulsarlos?', hint: 'Contesta aunque no tengas exceso de gases.', type: 'chips', opts: ['No', 'A veces', 'Sí'] },
     { id: 'dig_gases_olor', label: '¿Cómo huelen?', type: 'chips', opts: ['Apenas huelen', 'Olor normal', ['Olor fuerte (huevo podrido)', 'Olor fuerte, como a huevo podrido']] }
   ]};
