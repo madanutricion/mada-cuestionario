@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="mada.css?v=20261003">
+<link rel="stylesheet" href="mada.css?v=2026100302">
 </head>
 <body>
 <!-- MADA · Cuestionario inicial por perfiles (v3, 2026-10-01).
@@ -19,7 +19,7 @@
      pestaña INICIAL (todo viaja en raw_json) → la app crea el cliente tras la revisión.
      Motor y estilos: mada.js / mada.css (compartidos con el cuestionario semanal). -->
 <div class="wrap"><div id="app"></div></div>
-<script src="mada.js?v=20261003"></script>
+<script src="mada.js?v=2026100302"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var CONTACT_EMAIL = 'madanutricion@gmail.com';   // confirmado por el usuario el 2026-10-02
@@ -214,15 +214,7 @@
     ['7 · fosa ilíaca derecha', '7', 'ingle'], ['8 · hipogastrio', '8', 'bajo vientre'], ['9 · fosa ilíaca izquierda', '9', 'ingle'],
     ['Difuso', 'Difuso: no sabría señalar un punto']
   ];
-  var BRISTOL = [
-    ['Tipo 1', 'Tipo 1', 'Bolitas duras y separadas, cuesta expulsarlas', 'b1'],
-    ['Tipo 2', 'Tipo 2', 'Alargada, pero formada por bultos', 'b2'],
-    ['Tipo 3', 'Tipo 3', 'Alargada, con grietas en la superficie', 'b3'],
-    ['Tipo 4', 'Tipo 4', 'Alargada, lisa y blanda', 'b4'],
-    ['Tipo 5', 'Tipo 5', 'Trozos blandos con los bordes definidos', 'b5'],
-    ['Tipo 6', 'Tipo 6', 'Trozos pastosos con los bordes irregulares', 'b6'],
-    ['Tipo 7', 'Tipo 7', 'Líquida, sin trozos sólidos', 'b7']
-  ];
+  var BRISTOL = MadaForm.BRISTOL;
   STEP_DEFS.salud_digestivo = variant(STEP_DEFS.salud, { omit: ['digestivo', 'digestivo_detalle'] });
   STEP_DEFS.dig_historia = { name: 'Digestión', title: 'Tu digestión', desc: 'Cuanto más me cuentes, mejor podré valorar tu caso. Deja en blanco lo que no te pase.', fields: [
     { id: 'dig_diagnostico', label: '¿Tienes algún diagnóstico médico digestivo?', hint: 'Si tienes informes o pruebas, envíamelos por email o Drive.', opt: true, type: 'text', ph: 'Colon irritable, celiaquía, SIBO, gastritis, Helicobacter…' },
