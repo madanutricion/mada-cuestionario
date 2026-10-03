@@ -24,7 +24,7 @@
   </div>
   <div id="app" style="display:none"></div>
 </div>
-<script src="mada.js?v=2026100302"></script>
+<script src="mada.js?v=2026100303"></script>
 <script>
   // Si algún día cambia la URL /exec del Apps Script, se actualiza SOLO esta constante.
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
@@ -140,7 +140,7 @@
           { id: 'tca_restriccion', label: '¿Has comido menos de lo acordado o te has saltado comidas a propósito?', type: 'chips', opts: ['No', 'Alguna vez', 'A menudo'] },
           { id: 'tca_atracones', label: '¿Has tenido momentos de comer con sensación de perder el control?', type: 'chips', opts: ['No', '1-2 veces', '3 o más'] },
           { id: 'tca_compensacion', label: '¿Has hecho algo para compensar lo que habías comido?', type: 'checks', none: 'No', opts: ['No', 'Vómitos', 'Laxantes o diuréticos', 'Ejercicio para compensar', 'Ayunar o saltarme la comida siguiente'] },
-          { id: 'tca_contexto', label: 'Si quieres, cuéntame qué pasó o cómo te sentías', opt: true, type: 'textarea', ph: 'Lo que te apetezca compartir' }
+          { id: 'tca_contexto', label: 'Si quieres, cuéntame qué pasó o cómo te sentías', hint: 'Si te encuentras muy mal o tienes pensamientos de hacerte daño, no esperes a la consulta: llama al 024 (gratuito, 24 horas) o al 112.', opt: true, type: 'textarea', ph: 'Lo que te apetezca compartir' }
         ]},
         { key: 'cuerpo', name: 'Tu cuerpo', title: 'Cómo está tu cuerpo', desc: 'Señales físicas de esta semana.', fields: [
           { id: 'tca_fisico', label: '¿Has notado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Mareos', 'Mucho frío', 'Cansancio fuerte', 'Hinchazón o malas digestiones', 'Estreñimiento', 'Nada de esto'] },
