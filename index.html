@@ -86,7 +86,19 @@
       descanso: { key: 'descanso', name: 'Descanso y energía', title: 'Descanso y energía', desc: '¿Cómo te has sentido en general durante la semana?', fields: [F.cansancio, F.causa, F.sueno, F.horas, F.animo, F.notasSueno] },
       alimentacion: { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación y digestión', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [F.saciedad, F.hambre, F.digestiones, F.molestias, F.hidratacion] },
       plan: { key: 'plan', name: 'Tu plan', title: 'Tu menú semanal', desc: 'Esto nos ayuda a ajustar los platos de las próximas semanas.', fields: [
-        { id: 'adherencia_0_10', type: 'slider', label: '¿Cuánto has seguido el plan esta semana?', emojis: ['🙈', '😬', '😐', '🙂', '🎯'], minLabel: 'Casi nada', maxLabel: 'Al 100 %' },
+        // 2026-10-11: dos preguntas en vez de la nota de 0 a 10 (decía cuánto, no hacia dónde): ¿come menos o más que el plan?
+        { id: 'ingestas_completas', label: '¿Has completado las comidas del plan?', type: 'chips', opts: ['Todas, con sus cantidades', 'Casi todas', 'Me he dejado tomas o cantidades a menudo'] },
+        { id: 'ingestas_costosas', label: '¿Cuáles te han costado?', hint: 'Puedes marcar varias.', type: 'checks',
+          showIf: function (api) { var v = api.chip('ingestas_completas'); return !!v && v !== 'Todas, con sus cantidades'; },
+          opts: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena o recena'] },
+        { id: 'ingestas_notas', label: '¿Por qué?', opt: true, type: 'text', ph: 'No tenía hambre, no me daba tiempo, era mucha cantidad…',
+          showIf: function (api) { var v = api.chip('ingestas_completas'); return !!v && v !== 'Todas, con sus cantidades'; } },
+        { id: 'comidas_fuera', label: '¿Has hecho alguna comida fuera del plan?', hint: 'Es completamente normal: solo nos ayuda a ajustar.', type: 'chips', opts: ['Ninguna', '1 o 2', '3 o 4', '5 o más'] },
+        { id: 'comidas_fuera_tipo', label: '¿De qué tipo?', hint: 'Puedes marcar varias.', type: 'checks',
+          showIf: function (api) { var v = api.chip('comidas_fuera'); return !!v && v !== 'Ninguna'; },
+          opts: ['Comida o cena fuera', 'Picoteo entre horas', 'Dulces o bollería', 'Alcohol', 'Comida rápida o precocinado'] },
+        { id: 'comidas_fuera_notas', label: '¿Quieres contar algo más?', opt: true, type: 'text', ph: 'Cumpleaños el sábado, cena de trabajo…',
+          showIf: function (api) { var v = api.chip('comidas_fuera'); return !!v && v !== 'Ninguna'; } },
         { id: 'satisfaccion_menu', label: '¿Contento/a con el menú?', type: 'text', ph: 'Sí, aunque repetiría menos las cenas…' },
         { id: 'aburrimiento_0_10', type: 'slider', label: '¿Te aburre el menú?', emojis: ['🤩', '🙂', '😐', '🥱', '😪'], minLabel: 'Para nada', maxLabel: 'Mucho' },
         { id: 'dificultades_plan', label: '¿Dificultades para seguir el plan?', opt: true, type: 'textarea', ph: 'Comidas fuera, falta de tiempo para cocinar…' },
@@ -134,7 +146,7 @@
         S.plan, S.actividad
       ]},
 
-      // TCA: sin peso, sin pasos y sin nota de adherencia. Ninguna pregunta nombra el peso, las calorías ni la dieta.
+      // TCA: sin peso, sin pasos y sin preguntas de ingesta (comidas completadas o fuera del plan). Ninguna pregunta nombra el peso, las calorías ni la dieta.
       tca: { kicker: 'Seguimiento semanal', steps: [
         { key: 'semana', name: 'Tu semana', title: 'Tu semana', desc: 'Cómo te has encontrado estos días.', fields: [F.animo, F.cansancio, F.causa, F.sueno, F.horas, F.notasSueno] },
         { key: 'comidas', name: 'Comidas', title: 'Las comidas', desc: 'Aquí no hay notas ni exámenes: solo quiero saber cómo ha ido.', fields: [
