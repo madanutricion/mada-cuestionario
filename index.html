@@ -50,6 +50,8 @@
   var PERFIL = (Q.get('p') || '').trim().toLowerCase();
   if (['deportista', 'digestivo', 'tca'].indexOf(PERFIL) < 0) PERFIL = '';
   var PREVIEW = Q.get('preview') === '1';
+  // &e=1: el cliente entrena y su cuestionario no es el de deportistas (digestivo): se añade el paso de entrenos
+  var TRAINS = Q.get('e') === '1';
 
   if (!TOKEN) {
     document.getElementById('invalid').style.display = 'block';
@@ -108,14 +110,8 @@
       actividad: { key: 'actividad', name: 'Actividad', title: 'Actividad y último apunte', desc: 'Ya casi está. Un par de datos más y terminamos.', fields: [F.pasos, F.entrenos, F.extra, F.proxima, F.comentarios] }
     };
 
-    // ── Variantes por perfil (lo elige el nutricionista en la ficha; viaja en el enlace como &p=) ──
-    // Las respuestas propias de cada perfil (dep_*, dig_*, tca_*) no tienen columna en la hoja:
-    // el Apps Script las guarda juntas en «extra_json» y la app las muestra en la revisión de la semana.
-    var VARIANTS = {
-      '': { kicker: 'Seguimiento semanal', steps: [S.peso, S.descanso, S.alimentacion, S.plan, S.actividad] },
-
-      deportista: { kicker: 'Seguimiento semanal · deportistas', steps: [S.peso, S.descanso, S.alimentacion, S.plan,
-        { key: 'entrenos', name: 'Entrenos', title: 'Tus entrenos', desc: 'Lo que has hecho y cómo te has encontrado entrenando.', fields: [
+    // Paso de entrenos (deportistas y, con &e=1, el digestivo que entrena) y último paso sin entrenos
+    S.entrenos = { key: 'entrenos', name: 'Entrenos', title: 'Tus entrenos', desc: 'Lo que has hecho y cómo te has encontrado entrenando.', fields: [
           F.entrenos,
           slider('dep_energia_0_10', 'Energía en los entrenos', 'Vacío/a', 'Con fuerza', ['🪫', '😕', '😐', '🙂', '⚡']),
           slider('dep_recuperacion_0_10', 'Recuperación entre sesiones', 'Muy mala', 'Muy buena', ['🥵', '😕', '😐', '🙂', '💪']),
@@ -123,9 +119,16 @@
           opt('dep_pauta_notas', '¿Qué te ha costado o qué cambiarías?', 'El gel de la tirada me sienta regular…'),
           { id: 'dep_gi', label: '¿Molestias digestivas entrenando?', type: 'checks', none: 'Ninguna', opts: ['Ninguna', 'Náuseas', 'Flato', 'Calambres abdominales', 'Diarrea', 'Reflujo'] },
           F.extra
-        ]},
-        { key: 'actividad', name: 'Actividad', title: 'Último apunte', desc: 'Ya casi está.', fields: [F.pasos, F.proxima, F.comentarios] }
-      ]},
+        ]};
+    S.ultimo = { key: 'actividad', name: 'Actividad', title: 'Último apunte', desc: 'Ya casi está.', fields: [F.pasos, F.proxima, F.comentarios] };
+
+    // ── Variantes por perfil (lo elige el nutricionista en la ficha; viaja en el enlace como &p=) ──
+    // Las respuestas propias de cada perfil (dep_*, dig_*, tca_*) no tienen columna en la hoja:
+    // el Apps Script las guarda juntas en «extra_json» y la app las muestra en la revisión de la semana.
+    var VARIANTS = {
+      '': { kicker: 'Seguimiento semanal', steps: [S.peso, S.descanso, S.alimentacion, S.plan, S.actividad] },
+
+      deportista: { kicker: 'Seguimiento semanal · deportistas', steps: [S.peso, S.descanso, S.alimentacion, S.plan, S.entrenos, S.ultimo] },
 
       digestivo: { kicker: 'Seguimiento semanal · digestivo', steps: [S.peso, S.descanso,
         { key: 'alimentacion', name: 'Alimentación', title: 'Alimentación', desc: 'Sobre cómo te ha sentado el plan esta semana.', fields: [F.saciedad, F.hambre, F.digestiones, F.hidratacion] },
@@ -143,8 +146,8 @@
           { id: 'dig_bristol', label: '¿Cómo han sido tus heces?', hint: 'Puedes marcar varias.', type: 'checks', layout: 'rows', opts: MadaForm.BRISTOL },
           { id: 'dig_alarma', label: '¿Te ha pasado algo de esto?', type: 'checks', none: 'Nada de esto', opts: ['Sangre en las heces o heces negras', 'Vómitos', 'Nada de esto'] }
         ]},
-        S.plan, S.actividad
-      ]},
+        S.plan
+      ].concat(TRAINS ? [S.entrenos, S.ultimo] : [S.actividad])},
 
       // TCA: sin peso, sin pasos y sin preguntas de ingesta (comidas completadas o fuera del plan). Ninguna pregunta nombra el peso, las calorías ni la dieta.
       tca: { kicker: 'Seguimiento semanal', steps: [
