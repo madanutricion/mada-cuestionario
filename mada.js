@@ -4,7 +4,8 @@
                          validateStep, transform, success, preview }).
    preview: true = vista previa para el nutricionista (se recorre entero y no envía nada).
    Sin dependencias. Tipos de campo: text, email, tel, number, date, textarea, meal,
-   select, chips, checks, grid, slider, weights, sport_totals, sessions, rows, consent. */
+   select, chips, checks, grid, slider, weights, sport_totals, sessions, rows, consent,
+   info (solo lectura: `items` = lista de textos, `figure` = SVG propio de la página, `link` = {href, text}). */
 (function (global) {
   'use strict';
 
@@ -181,6 +182,10 @@
           (f.note ? '<div class="field-hint" style="margin-top:12px;margin-bottom:0">' + esc(f.note) + '</div>' : '');
       } else if (t === 'rows') {
         body = '<div class="rows" id="' + f.id + '-box"></div><button type="button" class="btn-add" data-r-add="' + f.id + '">' + esc(f.addLabel || '+ Añadir') + '</button>';
+      } else if (t === 'info') {
+        body = (f.figure ? '<div class="info-figure">' + f.figure + '</div>' : '') +
+          (f.items ? '<ul class="info-list">' + f.items.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+          (f.link ? '<a class="btn-link" href="' + esc(f.link.href) + '">' + esc(f.link.text) + '</a>' : '');
       } else if (t === 'consent') {
         body = '<label class="consent"><input type="checkbox" id="' + f.id + '"><span>' + esc(f.text) + '</span></label>' +
           (f.legal ? '<details class="legal"><summary>Leer la información de protección de datos</summary><p>' + esc(f.legal) + '</p></details>' : '');
