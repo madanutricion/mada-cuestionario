@@ -5,7 +5,8 @@
    preview: true = vista previa para el nutricionista (se recorre entero y no envía nada).
    Sin dependencias. Tipos de campo: text, email, tel, number, date, textarea, meal,
    select, chips, checks, grid, slider, weights, sport_totals, sessions, rows, consent,
-   info (solo lectura: `items` = lista de textos, `figure` = SVG propio de la página, `link` = {href, text}). */
+   info (solo lectura: `items` = lista de textos, `figure` = SVG propio de la página, `link` = {href, text}).
+   Cualquier campo admite `figure`: dibujo pequeño junto a la pregunta. */
 (function (global) {
   'use strict';
 
@@ -191,6 +192,8 @@
           (f.legal ? '<details class="legal"><summary>Leer la información de protección de datos</summary><p>' + esc(f.legal) + '</p></details>' : '');
       }
       var inner = t === 'meal' ? '<div class="meal-label">' + esc(f.label) + '</div>' + hint + body : lab + hint + body;
+      // `figure` (SVG propio de la página) en un campo con respuesta: dibujo pequeño a la izquierda
+      if (f.figure && t !== 'info') inner = '<div class="with-figure"><div class="fig">' + f.figure + '</div><div class="fig-body">' + inner + '</div></div>';
       return '<div class="card" data-fid="' + f.id + '">' + inner + '</div>';
     }
 
