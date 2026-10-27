@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Perímetros y fotos · mada nutrición</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mada.css?v=2026102701">
+</head>
+<body>
+<!-- MADA · Perímetros en casa + recordatorio de fotos (2026-10-27). Enlace: ?t=token&n=nombre&m=basica|completa[&preview=1].
+     basica (cada 2 semanas) = abdomen, glúteo, brazo y muslo; completa (cada 4) = además cintura, pecho y gemelo.
+     Claves = las de mada-app/app/anthro.py (SITES). Las fotos NO se suben aquí: se mandan por email.
+     Página estática (GitHub Pages) → POST (form:'perimetros') al doPost del Apps Script → pestaña PERIMETROS
+     → mada-app/app/perimetros_sync.py. Motor y estilos: mada.js / mada.css. -->
+<div class="wrap">
+  <div id="invalid" style="display:none">
+    <div class="brand"><span class="wordmark">mada<sup>©</sup></span></div>
+    <div class="invalid-link">
+      <h2 class="step-title">Enlace no válido</h2>
+      <p class="step-desc" style="margin-top:8px;">Este enlace está incompleto.<br>Pide a tu nutricionista que te lo reenvíe.</p>
+    </div>
+  </div>
+  <div id="app" style="display:none"></div>
+</div>
+<script src="mada.js?v=2026102701"></script>
+<script>
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
+  var PHOTO_EMAIL = 'madanutricion@gmail.com';
+
+  var Q = new URLSearchParams(location.search);
+  var TOKEN = (Q.get('t') || '').trim();
+  var CLIENT_NAME = (Q.get('n') || '').trim();
+  var MODO = (Q.get('m') || '').trim().toLowerCase() === 'completa' ? 'completa' : 'basica';
+  var PREVIEW = Q.get('preview') === '1';
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  var TODAY = ymd(new Date());
+
+  // Silueta de frente con una línea naranja donde va la cinta (y = altura en el dibujo; x0-x1 = ancho de la línea)
+  var BODY = '<circle cx="60" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/>' +
+    '<path d="M60 28c-8 0-18 3-22 8l-10 44 7 2 10-36v32l-6 34 4 66h10l3-58 4 0 3 58h10l4-66-6-34V46l10 36 7-2-10-44c-4-5-14-8-22-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>';
+  function figure(y, x0, x1) {
+    return '<svg viewBox="0 0 120 210" role="img" aria-label="Dónde poner la cinta">' + BODY +
+      '<line x1="' + x0 + '" y1="' + y + '" x2="' + x1 + '" y2="' + y + '" stroke="#EA7300" stroke-width="4" stroke-linecap="round"/></svg>';
+  }
+  function measure(id, label, hint, fig) {
+    return { id: id, label: label, hint: hint, type: 'number', unit: 'cm', step: 0.1, min: 15, max: 200, ph: '—', figure: fig };
+  }
+  var SITES = {
+    umbilical:   measure('umbilical', 'Abdomen (a la altura del ombligo)', 'Cinta horizontal justo por el ombligo. Mide al soltar el aire con normalidad, sin meter tripa.', figure(84, 40, 80)),
+    gluteal:     measure('gluteal', 'Glúteo', 'De pie con los pies juntos, por la parte que más sobresale del glúteo. Mírate de lado en el espejo para que la cinta quede recta.', figure(106, 38, 82)),
+    arm_relaxed: measure('arm_relaxed', 'Brazo derecho, relajado', 'Brazo colgando y suelto, a medio camino entre el hombro y el codo. Si alguien te ayuda, mejor.', figure(54, 26, 40)),
+    thigh_mid:   measure('thigh_mid', 'Muslo derecho', 'De pie con el peso en las dos piernas, a medio camino entre la ingle y la rodilla.', figure(132, 44, 59)),
+    waist:       measure('waist', 'Cintura (la parte más estrecha)', 'Entre las costillas y el ombligo, donde la cintura es más estrecha. Al soltar el aire, sin meter tripa.', figure(72, 42, 78)),
+    chest:       measure('chest', 'Pecho', 'A la altura de los pezones, con los brazos relajados y al soltar el aire con normalidad.', figure(48, 40, 80)),
+    calf:        measure('calf', 'Gemelo derecho', 'De pie con el peso en las dos piernas, por la parte más ancha de la pantorrilla.', figure(170, 45, 58))
+  };
+  var KEYS = MODO === 'completa'
+    ? ['chest', 'waist', 'umbilical', 'gluteal', 'arm_relaxed', 'thigh_mid', 'calf']
+    : ['umbilical', 'gluteal', 'arm_relaxed', 'thigh_mid'];
+
+  // El dibujo va en una tarjeta propia, encima de cada medida
+  var measureFields = [];
+  KEYS.forEach(function (k) {
+    var s = SITES[k];
+    measureFields.push({ id: k + '_fig', type: 'info', figure: s.figure });
+    measureFields.push({ id: s.id, label: s.label, hint: s.hint, type: s.type, unit: s.unit, step: s.step, min: s.min, max: s.max, ph: s.ph });
+  });
+
+  var SUBJECT = 'Fotos de progreso · ' + (CLIENT_NAME || 'nombre') + ' · ' + TODAY;
+  var MAILTO = 'mailto:' + PHOTO_EMAIL + '?subject=' + encodeURIComponent(SUBJECT) +
+    '&body=' + encodeURIComponent('Te mando las tres fotos: de frente, de espaldas y de lado.');
+
+  var STEPS = [
+    { key: 'antes', name: 'Antes de medir', title: 'Antes de empezar', desc: 'Así las medidas de cada vez se pueden comparar.', fields: [
+      { id: 'antes_info', type: 'info', items: [
+        'Por la mañana, en ayunas y después de ir al baño.',
+        'Con una cinta métrica de costura, siempre la misma.',
+        'De pie, relajado/a y sin ropa en la zona que mides.',
+        'La cinta pegada a la piel pero sin apretar ni hundirla, y paralela al suelo.',
+        'Si puedes, mídelo dos veces y apunta lo que te salga más repetido.'
+      ]}
+    ]},
+    { key: 'medidas', name: 'Medidas', title: 'Tus medidas', desc: MODO === 'completa' ? 'Esta vez toca la medición completa: siete perímetros.' : 'Cuatro perímetros, en centímetros.', fields: measureFields.concat([
+      { id: 'comentarios', label: '¿Algo que comentar?', opt: true, type: 'textarea', ph: 'No tenía cinta y usé otra, estaba con la regla, hinchazón…' }
+    ])},
+    { key: 'fotos', name: 'Fotos', title: 'Las fotos', desc: 'Tres fotos que solo veo yo, para ver tu evolución. Mándalas por email.', fields: [
+      { id: 'fotos_info', type: 'info', items: [
+        'Una de frente, otra de espaldas y otra de lado.',
+        'En ayunas, a la misma hora que las medidas.',
+        'Con luz de frente y sin sombras, delante de una pared lisa.',
+        'Con ropa ajustada o ropa interior, la misma cada vez.',
+        'El móvil apoyado a la altura del pecho, con temporizador, a unos 2 metros. Cuerpo entero y postura relajada.'
+      ], link: { href: MAILTO, text: 'Mandar las fotos a ' + PHOTO_EMAIL } },
+      { id: 'fotos_estado', label: 'Las fotos…', type: 'chips', opts: ['Ya las he enviado', 'Las envío hoy', 'Esta vez no puedo'] },
+      { id: 'consent_at', label: 'Tus fotos', type: 'consent', showIf: function (api) { return api.chip('fotos_estado') !== 'Esta vez no puedo'; },
+        text: 'Mando las fotos solo para mi seguimiento nutricional. No se usarán para nada más (ni redes ni publicidad) sin pedirme permiso aparte.' }
+    ]}
+  ];
+
+  if (!TOKEN) {
+    document.getElementById('invalid').style.display = 'block';
+  } else {
+    document.getElementById('app').style.display = 'block';
+    MadaForm.mount({
+      root: '#app',
+      brand: { kicker: MODO === 'completa' ? 'Medición completa' : 'Medición', greeting: CLIENT_NAME ? 'Hola, ' + CLIENT_NAME : 'Hola',
+               meta: 'Unos 5 minutos. Mídete y, al terminar, mándame las fotos.' },
+      draftKey: 'mada_perim_' + TOKEN + '_' + TODAY + (PREVIEW ? '_preview' : ''),
+      execUrl: EXEC_URL,
+      base: { form: 'perimetros', token: TOKEN, modo: MODO, fecha: TODAY },
+      numeric: true,
+      preview: PREVIEW,
+      steps: STEPS,
+      validateStep: function (key, api) {
+        if (key === 'medidas') {
+          var missing = 0;
+          KEYS.forEach(function (k) {
+            var el = document.getElementById(k), v = +String(el.value).replace(',', '.');
+            var bad = el.value.trim() === '' || !(v >= 15 && v <= 200);
+            el.classList.toggle('invalid', bad); if (bad) missing++;
+          });
+          if (missing) return 'Revisa las medidas marcadas: van en centímetros (por ejemplo 82,5).';
+        }
+        if (key === 'fotos') {
+          if (!api.chip('fotos_estado')) return 'Dime si ya has mandado las fotos.';
+          if (api.chip('fotos_estado') !== 'Esta vez no puedo' && !api.consent('consent_at')) return 'Marca la casilla de las fotos para poder enviar.';
+        }
+        return null;
+      },
+      success: { title: '¡Recibido!', text: 'Ya tengo tus medidas. Si aún no me has mandado las fotos, recuerda enviarlas a ' + PHOTO_EMAIL + '.',
+        titleFor: function () { return CLIENT_NAME ? '¡Gracias, ' + CLIENT_NAME + '!' : ''; } }
+    });
+  }
+</script>
+</body>
+</html>
