@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="mada.css?v=2026102701">
+<link rel="stylesheet" href="mada.css?v=2026102702">
 </head>
 <body>
 <!-- MADA · Perímetros en casa + recordatorio de fotos (2026-10-27). Enlace: ?t=token&n=nombre&m=basica|completa[&preview=1].
@@ -26,7 +26,7 @@
   </div>
   <div id="app" style="display:none"></div>
 </div>
-<script src="mada.js?v=2026102701"></script>
+<script src="mada.js?v=2026102702"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var PHOTO_EMAIL = 'madanutricion@gmail.com';
@@ -62,13 +62,7 @@
     ? ['chest', 'waist', 'umbilical', 'gluteal', 'arm_relaxed', 'thigh_mid', 'calf']
     : ['umbilical', 'gluteal', 'arm_relaxed', 'thigh_mid'];
 
-  // El dibujo va en una tarjeta propia, encima de cada medida
-  var measureFields = [];
-  KEYS.forEach(function (k) {
-    var s = SITES[k];
-    measureFields.push({ id: k + '_fig', type: 'info', figure: s.figure });
-    measureFields.push({ id: s.id, label: s.label, hint: s.hint, type: s.type, unit: s.unit, step: s.step, min: s.min, max: s.max, ph: s.ph });
-  });
+  var measureFields = KEYS.map(function (k) { return SITES[k]; });
 
   var SUBJECT = 'Fotos de progreso · ' + (CLIENT_NAME || 'nombre') + ' · ' + TODAY;
   var MAILTO = 'mailto:' + PHOTO_EMAIL + '?subject=' + encodeURIComponent(SUBJECT) +
