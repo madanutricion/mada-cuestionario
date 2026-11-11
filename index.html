@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
 <title>Cuestionario semanal · mada nutrición</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +25,7 @@
   </div>
   <div id="app" style="display:none"></div>
 </div>
-<script src="mada.js?v=2026102702"></script>
+<script src="mada.js?v=2026111101"></script>
 <script>
   // Si algún día cambia la URL /exec del Apps Script, se actualiza SOLO esta constante.
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
@@ -47,7 +48,10 @@
   }
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
   // Variante del semanal (&p=): '' = general. Vista previa para el nutricionista: &preview=1 (no envía nada).
+  // Desde 2026-11-11 el enlace lleva un código (1, 2, 3) en vez del nombre del perfil, para que la URL
+  // no diga nada de la salud del cliente; los enlaces ya enviados con el nombre siguen valiendo.
   var PERFIL = (Q.get('p') || '').trim().toLowerCase();
+  PERFIL = { '1': 'deportista', '2': 'digestivo', '3': 'tca' }[PERFIL] || PERFIL;
   if (['deportista', 'digestivo', 'tca'].indexOf(PERFIL) < 0) PERFIL = '';
   var PREVIEW = Q.get('preview') === '1';
   // &e=1: el cliente entrena y su cuestionario no es el de deportistas (digestivo): se añade el paso de entrenos
