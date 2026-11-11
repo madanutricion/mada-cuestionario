@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
 <title>Cuestionario inicial · mada nutrición</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,14 +21,17 @@
      pestaña INICIAL (todo viaja en raw_json) → la app crea el cliente tras la revisión.
      Motor y estilos: mada.js / mada.css (compartidos con el cuestionario semanal). -->
 <div class="wrap"><div id="app"></div></div>
-<script src="mada.js?v=2026102702"></script>
+<script src="mada.js?v=2026111101"></script>
 <script>
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
   var CONTACT_EMAIL = 'madanutricion@gmail.com';   // confirmado por el usuario el 2026-10-02
 
   // ── Perfil (lo elige el nutricionista al copiar el enlace) ──
   var KNOWN = ['general', 'deportista', 'menor', 'digestivo', 'tca'];
-  var PERFIL = (new URLSearchParams(location.search).get('perfil') || 'general').toLowerCase();
+  // ?pf=1…4 (2026-11-11): código en vez del nombre del perfil; ?perfil=nombre sigue valiendo (enlaces ya enviados).
+  var _QS = new URLSearchParams(location.search);
+  var PERFIL = ({ '1': 'deportista', '2': 'digestivo', '3': 'tca', '4': 'menor' }[(_QS.get('pf') || '').trim()]
+                || _QS.get('perfil') || 'general').toLowerCase();
   if (KNOWN.indexOf(PERFIL) < 0) PERFIL = 'general';
 
   var GRID_FOODS = ['Cereales (pan, pasta, avena, arroz…)', 'Legumbres', 'Proteína vegetal (tofu, soja, tempeh…)', 'Verduras', 'Frutas', 'Tubérculos (patata, boniato…)', 'Carnes', 'Pescados', 'Lácteos', 'Huevo', 'Frutos secos y semillas'];
