@@ -339,8 +339,20 @@
         localStorage.setItem(cfg.draftKey, JSON.stringify(d));
       } catch (e) {}
     }
+    // Borradores de semanas pasadas (más de 4 semanas) fuera del navegador: llevan respuestas de salud.
+    function purgeOldDrafts() {
+      try {
+        var limit = Date.now() - 28 * 864e5, old = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i), m = /^mada_q_.*_(\d{4}-\d{2}-\d{2})(_preview)?$/.exec(k || '');
+          if (m && new Date(m[1] + 'T12:00:00').getTime() < limit) old.push(k);
+        }
+        old.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (e) {}
+    }
     function loadDraft() {
       var d = {}, raw = null;
+      purgeOldDrafts();
       try {
         raw = localStorage.getItem(cfg.draftKey);
         if (raw == null && cfg.legacyDraftKey) raw = localStorage.getItem(cfg.legacyDraftKey);   // borrador de la página anterior
