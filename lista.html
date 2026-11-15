@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Tu lista de la compra · mada nutrición</title>
+<link rel="stylesheet" href="lista.css?v=2026111502">
+</head>
+<body>
+<!-- MADA · Lista de la compra del cliente (2026-11-15, L1: plato a plato por día). Enlace: ?t=token.
+     Lee GET EXEC_URL?lista=<token> ({ok, data} | {ok:false, error}) y envía las elecciones con POST no-cors
+     {form:'lista', token, week, submission_id, choices}. Sin kcal ni macros. Motor y estilos propios: lista.js / lista.css. -->
+<div class="wrap">
+  <div id="lista-app"></div>
+</div>
+<script>
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbzDt5caDvdEflEsBOUBldg51Zm5GO_rv7yb8Tvi7xvp4FPO4zFOr2xmxoo-6ybuRs6Wqw/exec';
+</script>
+<script src="lista.js?v=2026111502"></script>
+</body>
+</html>
