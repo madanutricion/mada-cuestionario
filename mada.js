@@ -109,8 +109,14 @@
     // opción, con dibujo de ICONS) o 'grid3' (rejilla de tres columnas con cabecera `f.head`; la opción `f.none` va a lo ancho).
     function chipsHTML(attr, id, opts, selected, f) {
       var layout = f && f.layout ? f.layout : '';
+      // Sin layout propio, la forma sale de las opciones: cortas y pocas = fila de botones iguales; alguna larga = una por fila
+      var auto = '';
+      if (!layout && f) {
+        var lens = opts.map(function (o) { return String(Array.isArray(o) ? o[1] : o).length; }), longest = Math.max.apply(null, lens);
+        auto = opts.length <= 4 && longest <= 10 ? ' is-seg' : (longest > 24 ? ' is-list' : '');
+      }
       var head = layout === 'grid3' && f.head ? '<div class="chips-head">' + f.head.map(function (h) { return '<span>' + esc(h) + '</span>'; }).join('') + '</div>' : '';
-      return head + '<div class="chips' + (layout ? ' is-' + layout : '') + '" ' + attr + '="' + esc(id) + '">' + opts.map(function (o) {
+      return head + '<div class="chips' + (layout ? ' is-' + layout : '') + auto + '" ' + attr + '="' + esc(id) + '">' + opts.map(function (o) {
         var arr = Array.isArray(o), v = arr ? o[0] : o, l = arr ? o[1] : o, sub = arr ? o[2] : '', ico = arr ? ICONS[o[3]] : '';
         var on = Array.isArray(selected) ? selected.indexOf(v) >= 0 : selected === v;
         var inner = !layout ? esc(l) :
@@ -281,8 +287,9 @@
       '<div id="form-area">' + (cfg.preview ? '<div class="preview-flag">Vista previa · no se envía nada</div>' : '') +
       '<div class="head-rule"><div class="brand">' + WORDMARK + '<span class="kicker">' + esc(cfg.brand.kicker) + '</span></div>' +
       '<h1 class="greeting" id="greeting">' + esc(cfg.brand.greeting) + '</h1><div class="week-meta" id="week-label">' + esc(cfg.brand.meta || '') + '</div></div>' +
-      '<div class="progress-row"><span class="step-label" id="step-name"></span><span class="step-count" id="step-count"></span></div>' +
+      '<div class="progress-sticky"><div class="progress-row"><span class="step-label" id="step-name"></span><span class="step-count" id="step-count"></span></div>' +
       '<div class="progress-track"><div class="progress-fill" id="progress"></div></div>' +
+      '<div class="progress-steps" id="progress-steps" aria-hidden="true">' + steps.map(function () { return '<span></span>'; }).join('') + '</div></div>' +
       '<div class="error-banner" id="error-banner" role="alert"></div><div id="steps">' +
       steps.map(function (s, i) {
         return '<section class="step' + (i === 0 ? ' active' : '') + '" data-name="' + esc(s.name) + '"><h2 class="step-title">' + esc(s.title) + '</h2>' +
@@ -310,8 +317,8 @@
       var v = +st.sliders[f.id];
       input.value = v; input.dataset.set = '1';
       input.style.setProperty('--fill', (v * 10) + '%');
-      var e = f.emojis ? f.emojis[Math.min(f.emojis.length - 1, Math.floor(v / (10.01 / f.emojis.length)))] : '';
-      val.innerHTML = (e ? '<span class="slider-emoji">' + e + '</span>' : '') + v;
+      // 2026-11-16: sin emojis (f.emojis se ignora); solo la nota sobre 10
+      val.innerHTML = v + '<span class="of">/10</span>';
       val.classList.remove('unset');
     }
     function toggleTotals(key, on) {
@@ -513,7 +520,11 @@
       document.getElementById('progress').style.width = ((i + 1) / stepEls.length * 100) + '%';
       document.getElementById('step-name').textContent = stepEls[i].dataset.name;
       document.getElementById('step-count').textContent = 'Paso ' + (i + 1) + ' de ' + stepEls.length;
+      Array.prototype.forEach.call(document.getElementById('progress-steps').children, function (seg, j) {
+        seg.className = j < i ? 'done' : (j === i ? 'on' : '');
+      });
       btnBack.style.visibility = i === 0 ? 'hidden' : 'visible';
+      btnBack.style.display = i === 0 ? 'none' : '';
       btnNext.textContent = i === stepEls.length - 1 ? 'Enviar' : 'Continuar';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
